@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Better Coordinate Navigator</h1>
+  <h1 align="center">[更好的坐标导航]Better Coordinate Navigator</h1>
   <p align="center">
     轻量级 Minecraft 坐标标点与导航系统
     <br/>
