@@ -27,6 +27,11 @@
   </a>
 </p>
 
+
+---
+
+- Mod in Minecraft version is 1.20.1
+
 ---
 
 ## 核心功能
