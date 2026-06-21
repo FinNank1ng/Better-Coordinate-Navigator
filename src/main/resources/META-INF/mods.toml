@@ -1,63 +1,70 @@
-# This is an example mods.toml file. It contains the data relating to the loading mods.
-# There are several mandatory fields (#mandatory), and many more that are optional (#optional).
-# The overall format is standard TOML format, v0.5.0.
-# Note that there are a couple of TOML lists in this file.
-# Find more information on toml format here:  https://github.com/toml-lang/toml
-# The name of the mod loader type to load - for regular FML @Mod mods it should be javafml
+# 这是一个 mod 加载配置文件的示例。它包含了与加载 mod 相关的数据。
+# 其中有几个强制性的字段 (#mandatory)，以及更多可选的字段 (#optional)。
+# 整体格式是标准的 TOML 格式 (v0.5.0)。
+# 请注意，这个文件中包含几个 TOML 列表。
+# 在此处查找有关 toml 格式的更多信息:  https://github.com/toml-lang/toml
+# 要加载的 mod 加载器类型的名称 - 对于常规的 FML @Mod mods，它应该是 javafml
 modLoader = "javafml" #mandatory
-# A version range to match for said mod loader - for regular FML @Mod it will be the forge version
-loaderVersion = "${loader_version_range}" #mandatory This is typically bumped every Minecraft version by Forge. See our download page for lists of versions.
-# The license for you mod. This is mandatory metadata and allows for easier comprehension of your redistributive properties.
-# Review your options at https://choosealicense.com/. All rights reserved is the default copyright stance, and is thus the default here.
+# 用于所述 mod 加载器的版本范围 - 对于常规的 FML @Mod，它将是 forge 版本
+loaderVersion = "${loader_version_range}" # mandatory 这通常由 Forge 在每个 Minecraft 版本时进行升级。有关版本列表，请参阅我们的下载页面。
+# mod 的许可证。这是强制性的元数据，允许更轻松地理解你的再分发属性。
+# 在 https://choosealicense.com/ 处查看你的选项。保留所有权利是默认的版权立场，因此也是这里的默认值。
 license = "${mod_license}"
-# A URL to refer people to when problems occur with this mod
+# 当此 mod 出现问题时，供人们查询的 URL
 #issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
-# A list of mods - how many allowed here is determined by the individual mod loader
+# mod 加载器要加载的 mod 加载器类型的名称 - 对于常规的 FML @Mod mods，它应该是 javafml
+# 用于所述 mod 加载器的版本范围 - 对于常规的 FML @Mod，它将是 forge 版本
+# 一个 mod 列表 - 这里允许的数量由 individual mod loader 确定
 [[mods]] #mandatory
-# The modid of the mod
-modId = "${mod_id}" #mandatory
-# The version number of the mod
-version = "${mod_version}" #mandatory
-# A display name for the mod
-displayName = "${mod_name}" #mandatory
-# A URL to query for updates for this mod. See the JSON update specification https://docs.minecraftforge.net/en/latest/misc/updatechecker/
+# mod 的 modId
+modId = "better_coordinate_navigator" #mandatory
+# mod 的版本号
+version = "0.1.0-SNAPSHOT" #mandatory
+# mod 的显示名称
+displayName="Better Coordinate Navigator"
+# 用于查询此 mod 更新的 URL。请参阅 JSON 更新规范 https://docs.minecraftforge.net/en/latest/misc/updatechecker/
 #updateJSONURL="https://change.me.example.invalid/updates.json" #optional
-# A URL for the "homepage" for this mod, displayed in the mod UI
+# 在 mod UI 中显示的 mod "主页" 的 URL
 #displayURL="https://change.me.to.your.mods.homepage.example.invalid/" #optional
-# A file name (in the root of the mod JAR) containing a logo for display
+# 包含要显示的图标的文件名 (在 mod JAR 的根目录下)
 #logoFile="better_customnpcs.png" #optional
-# A text field displayed in the mod UI
+# 在 mod UI 中显示的文本字段
 #credits="Thanks for this example mod goes to Java" #optional
-# A text field displayed in the mod UI
-authors = "${mod_authors}" #optional
-# Display Test controls the display for your mod in the server connection screen
-# MATCH_VERSION means that your mod will cause a red X if the versions on client and server differ. This is the default behaviour and should be what you choose if you have server and client elements to your mod.
-# IGNORE_SERVER_VERSION means that your mod will not cause a red X if it's present on the server but not on the client. This is what you should use if you're a server only mod.
-# IGNORE_ALL_VERSION means that your mod will not cause a red X if it's present on the client or the server. This is a special case and should only be used if your mod has no server component.
-# NONE means that no display test is set on your mod. You need to do this yourself, see IExtensionPoint.DisplayTest for more information. You can define any scheme you wish with this value.
-# IMPORTANT NOTE: this is NOT an instruction as to which environments (CLIENT or DEDICATED SERVER) your mod loads on. Your mod should load (and maybe do nothing!) whereever it finds itself.
-#displayTest="MATCH_VERSION" # MATCH_VERSION is the default if nothing is specified (#optional)
+# 在 mod UI 中显示的文本字段
+authors = "github@FinNank1ng(ShirohaRen)  /  Bilibili - 星丶白羽莲"
+# Display Test 控制你的 mod 在服务器连接屏幕上的显示
+# MATCH_VERSION 表示如果客户端和服务器上的版本不同，你的 mod 会导致出现红色的 X。这是默认行为，如果你的 mod 同时具有服务器和客户端组件，你应该选择此选项。
+# IGNORE_SERVER_VERSION 表示如果 mod 仅存在于服务器上而不存在于客户端上，它不会导致出现红色的 X。如果你是仅服务器 mod，应该使用此选项。
+# IGNORE_ALL_VERSION 表示如果 mod 存在于客户端或服务器上，它都不会导致出现红色的 X。这是一个特殊情况，仅在你的 mod 没有服务器组件时使用。
+# NONE 表示你的 mod 上未设置显示测试。你需要自己完成此操作，请参阅 IExtensionPoint.DisplayTest 以获取更多信息。使用此值时，你可以定义任何你希望的方案。
+# 重要提示: 这**不是**关于你的 mod 在哪些环境 (CLIENT 或 DEDICATED SERVER) 中加载的指令。无论在哪里找到自己，你的 mod 都应该加载 (并且可能什么都不做!)。
+#displayTest="MATCH_VERSION" # 如果未指定，MATCH_VERSION 是默认值 (#optional)
 
-# The description text for the mod (multi line!) (#mandatory)
-description = '''${mod_description}'''
-# A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
-[[dependencies."${mod_id}"]] #optional
-# the modid of the dependency
-modId = "forge" #mandatory
-# Does this dependency have to exist - if not, ordering below must be specified
-mandatory = true #mandatory
-# The version range of the dependency
-versionRange = "${forge_version_range}" #mandatory
-# An ordering relationship for the dependency - BEFORE or AFTER required if the dependency is not mandatory
-# BEFORE - This mod is loaded BEFORE the dependency
-# AFTER - This mod is loaded AFTER the dependency
-ordering = "NONE"
-# Side this dependency is applied on - BOTH, CLIENT, or SERVER
-side = "BOTH"# Here's another dependency
+# mod 的描述文本 (多行!)
+description = '''
+A waypoint and navigation framework for Minecraft
+'''
+# 一个依赖项 - 使用 . 来指示特定 modId 的依赖项。依赖项是可选的。
+# Minecraft 基础依赖
 [[dependencies."${mod_id}"]]
 modId = "minecraft"
 mandatory = true
-# This version range declares a minimum of the current minecraft version up to but not including the next major version
-versionRange = "${minecraft_version_range}"
+versionRange = "[1.20.1,1.21)"
 ordering = "NONE"
 side = "BOTH"
+
+# Forge 依赖
+[[dependencies."${mod_id}"]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,48)"
+ordering = "NONE"
+side = "BOTH"
+
+## Xaero's Minimap 前置依赖
+#[[dependencies."${mod_id}"]]
+#modId="xaerominimap"
+#mandatory=true
+#versionRange="[24.7.1,)"
+#ordering="AFTER"
+#side="BOTH"

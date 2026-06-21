@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "io.github.FinNank1ng.better_coordinate_navigator.mixin",
   "compatibilityLevel": "JAVA_8",
-  "refmap": "better-coordinate-navigator.refmap.json",
+  "refmap": "better_coordinate_navigator.refmap.json",
   "mixins": [
   ],
   "client": [

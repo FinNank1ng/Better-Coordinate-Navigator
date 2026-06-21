@@ -1,7 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator;
 
 import io.github.FinNank1ng.better_coordinate_navigator.command.ModCommands;
-import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
 import io.github.FinNank1ng.better_coordinate_navigator.render.QuestMarkerWorldRenderer;
 import io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets;
 
