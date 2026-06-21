@@ -17,10 +17,10 @@
     <img src="https://img.shields.io/badge/Java-17+-F89820?style=for-the-badge&logo=java" />
   </a>
   <a href="https://qm.qq.com/q/e6kdQbTVja">
-    <img src="https://img.shields.io/badge/QQ%E7%BE%A4-514280270-blue?style=for-the-badge" alt="QQ Group">
+    <img src="https://img.shields.io/badge/QQ%E7%BE%A4-514280270-blue?style=for-the-badge" alt="QQ Group" />
   </a>
   <a href="https://github.com/FinNank1ng/Better-Coordinate-Navigator/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/FinNank1ng/Better-Coordinate-Navigator?color=C06C84&style=for-the-badge" alt="License">
+    <img src="https://img.shields.io/badge/MIT License-yellow?style=for-the-badge" alt="License" />
   </a>
   <a href="https://github.com/FinNank1ng/Better-Coordinate-Navigator/stargazers">
     <img src="https://img.shields.io/github/stars/FinNank1ng/Better-Coordinate-Navigator?style=for-the-badge&color=F30525" />
