@@ -12,7 +12,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(
-        modid = "better-coordinate-navigator",
+        modid = "better_coordinate_navigator",
         value = Dist.CLIENT,
         bus = Mod.EventBusSubscriber.Bus.FORGE
 )

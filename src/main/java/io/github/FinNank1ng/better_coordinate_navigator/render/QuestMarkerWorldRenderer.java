@@ -18,7 +18,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 
 @Mod.EventBusSubscriber(
-        modid = "better-coordinate-navigator",
+        modid = "better_coordinate_navigator",
         value = Dist.CLIENT
 )
 
@@ -45,7 +45,6 @@ public class QuestMarkerWorldRenderer {
 
         // 文字距离显示与隐藏
         for (QuestMarker marker : ClientQuestCache.getMarkers()) {
-
             // 追踪
             if (!marker.tracked) {
                 continue;
