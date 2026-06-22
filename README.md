@@ -13,6 +13,9 @@
   <a href="https://Minecraft.net">
     <img src="https://img.shields.io/badge/Minecraft-Mod-62B47A?style=for-the-badge&logo=minecraft" />
   </a>
+  <a href="https://Minecraft.net">
+    <img src="https://img.shields.io/badge/Minecraft version-1.20.1-C1AB22?style=for-the-badge&logo=minecraft" />
+  </a>
   <a href="https://www.java.com">
     <img src="https://img.shields.io/badge/Java-17+-F89820?style=for-the-badge&logo=java" />
   </a>
@@ -26,11 +29,6 @@
     <img src="https://img.shields.io/github/stars/FinNank1ng/Better-Coordinate-Navigator?style=for-the-badge&color=F30525" />
   </a>
 </p>
-
-
----
-
-- Mod in Minecraft version is 1.20.1
 
 ---
 
