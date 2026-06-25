@@ -21,7 +21,7 @@ modId = "${mod_id}" #mandatory
 # mod 的版本号
 version = "${mod_version}" #mandatory
 # mod 的显示名称
-displayName="Better Coordinate Navigator"
+displayName="[更好的坐标导航]Better Coordinate Navigator"
 # 用于查询此 mod 更新的 URL。请参阅 JSON 更新规范 https://docs.minecraftforge.net/en/latest/misc/updatechecker/
 #updateJSONURL="https://change.me.example.invalid/updates.json" #optional
 # 在 mod UI 中显示的 mod "主页" 的 URL
@@ -44,6 +44,8 @@ authors = "github@FinNank1ng(ShirohaRen)  /  Bilibili - 星丶白羽莲"
 description = '''
 A waypoint and navigation framework for Minecraft
 '''
+
+logoFile="icon_v1.png"
 # 一个依赖项 - 使用 . 来指示特定 modId 的依赖项。依赖项是可选的。
 # Minecraft 基础依赖
 [[dependencies."${mod_id}"]]
