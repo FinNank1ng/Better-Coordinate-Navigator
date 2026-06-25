@@ -107,7 +107,6 @@ public class ModCommands {
 
         context.getSource().sendSuccess(
                 () -> Component.literal("""
-                    
                     §6§l========== Better coordinate navigator ==========
                     
                     §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
@@ -136,7 +135,6 @@ public class ModCommands {
                     
                     §a/bcn marker untrack
                     §7取消当前追踪
-                    
                     §8------------------------------------
                     
                     """),
@@ -162,9 +160,7 @@ public class ModCommands {
         StringBuilder builder = new StringBuilder();
 
         builder.append("""
-                
                 §6§l Marker List
-                
                 """);
 
         builder.append("§e当前任务点数量: §a")
@@ -231,7 +227,6 @@ public class ModCommands {
                 () -> Component.literal(
                         String.format(
                                 """
-                                
                                 §a 任务点创建成功
                                 
                                 §7 名称: §f%s
@@ -285,7 +280,6 @@ public class ModCommands {
         context.getSource().sendSuccess(
                 () -> Component.literal(
                         """
-                        
                         §a 任务点重命名成功
                         
                         §7 旧名称: §f%s
@@ -344,7 +338,6 @@ public class ModCommands {
         context.getSource().sendSuccess(
                 () -> Component.literal(
                         """
-                        
                         §a 已开始追踪
                         
                         §7 目标: §f%s
@@ -379,7 +372,6 @@ public class ModCommands {
         context.getSource().sendSuccess(
                 () -> Component.literal(
                         """
-                        
                         §6 已取消任务追踪
                         """
                 ),
@@ -419,9 +411,7 @@ public class ModCommands {
         }
 
         String text = """
-        
         §6§l========== Marker Info ==========
-        
         §e名称
         §f%s
         
@@ -433,7 +423,6 @@ public class ModCommands {
         
         §e状态
         %s
-        
         §8===================================
         """
                 .formatted(
@@ -482,7 +471,6 @@ public class ModCommands {
             context.getSource().sendSuccess(
                     () -> Component.literal(
                             """
-                            
                             §a 已删除任务点
                             
                             §7 名称: §f%s
