@@ -143,161 +143,124 @@ public class QuestMarkerWorldRenderer {
         }
     }
 
-    private static void renderDiamond(
-            PoseStack poseStack
-    ) {
+    private static void renderDiamond(PoseStack poseStack) {
 
-        Tesselator tess =
-                Tesselator.getInstance();
+        Tesselator tess = Tesselator.getInstance();
+        BufferBuilder buffer = tess.getBuilder();
 
-        BufferBuilder buffer =
-                tess.getBuilder();
+        float time = (System.currentTimeMillis() % 2000L) / 2000.0f;
+        float pulse = 0.55f + 0.45f * (float)Math.sin(time * Math.PI * 2.0);
+
+        Matrix4f matrix = poseStack.last().pose();
+
+        float top = 1.55F;
+        float bottom = -1.55F;
 
         RenderSystem.disableCull();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        RenderSystem.setShader(
-                GameRenderer::getPositionColorShader
+
+         // GLOW SHELL 外发光壳不遮挡
+        RenderSystem.depthMask(false);
+        RenderSystem.disableDepthTest();
+
+        buffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+
+        float glowScale = 1.25F;
+
+        addDiamond(buffer, matrix,
+                top * glowScale,
+                bottom * glowScale,
+                glowScale * glowScale,
+                255, 170, 40, (int)(90 * pulse)
         );
 
-        buffer.begin(
-                VertexFormat.Mode.TRIANGLES,
-                DefaultVertexFormat.POSITION_COLOR
-        );
+        tess.end();
 
-        Matrix4f matrix =
-                poseStack.last().pose();
+         // CORE
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
 
-        float top = 1.6F;
-        float bottom = -1.6F;
-        float size = 1F;
+        buffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
-        addTriangle(
-                buffer,
-                matrix,
-
-                0, top, 0,
-                0, 0, -size,
-                size, 0, 0
-        );
-
-        addTriangle(
-                buffer,
-                matrix,
-
-                0, top, 0,
-                size, 0, 0,
-                0, 0, size
-        );
-
-        addTriangle(
-                buffer,
-                matrix,
-
-                0, top, 0,
-                0, 0, size,
-                -size, 0, 0
-        );
-
-        addTriangle(
-                buffer,
-                matrix,
-
-                0, top, 0,
-                -size, 0, 0,
-                0, 0, -size
-        );
-
-        addTriangle(
-                buffer,
-                matrix,
-
-                0, bottom, 0,
-                size, 0, 0,
-                0, 0, -size
-        );
-
-        addTriangle(
-                buffer,
-                matrix,
-
-                0, bottom, 0,
-                0, 0, size,
-                size, 0, 0
-        );
-
-        addTriangle(
-                buffer,
-                matrix,
-
-                0, bottom, 0,
-                -size, 0, 0,
-                0, 0, size
-        );
-
-        addTriangle(
-                buffer,
-                matrix,
-
-                0, bottom, 0,
-                0, 0, -size,
-                -size, 0, 0
+        addDiamond(buffer, matrix,
+                top,
+                bottom,
+                glowScale,
+                255, 220, 90, 220
         );
 
         tess.end();
 
         RenderSystem.enableCull();
+        RenderSystem.disableBlend();
     }
-    private static void addTriangle(
+
+    private static void addDiamond(
             BufferBuilder buffer,
             Matrix4f matrix,
-
-            float x1,
-            float y1,
-            float z1,
-
-            float x2,
-            float y2,
-            float z2,
-
-            float x3,
-            float y3,
-            float z3
+            float top,
+            float bottom,
+            float scale,
+            int r, int g, int b, int a
     ) {
+        float s = scale;
 
-        buffer.vertex(
-                matrix,
-                x1,
-                y1,
-                z1
-        ).color(
-                255,
-                215,
-                0,
-                220
-        ).endVertex();
+        // top
+        addTri(buffer, matrix, r,g,b,a,
+                0, top, 0,
+                0, 0, -s,
+                s, 0, 0);
 
-        buffer.vertex(
-                matrix,
-                x2,
-                y2,
-                z2
-        ).color(
-                255,
-                215,
-                0,
-                220
-        ).endVertex();
+        addTri(buffer, matrix, r,g,b,a,
+                0, top, 0,
+                s, 0, 0,
+                0, 0, s);
 
-        buffer.vertex(
-                matrix,
-                x3,
-                y3,
-                z3
-        ).color(
-                255,
-                215,
-                0,
-                220
-        ).endVertex();
+        addTri(buffer, matrix, r,g,b,a,
+                0, top, 0,
+                0, 0, s,
+                -s, 0, 0);
+
+        addTri(buffer, matrix, r,g,b,a,
+                0, top, 0,
+                -s, 0, 0,
+                0, 0, -s);
+
+        // bottom
+        addTri(buffer, matrix, r,g,b,a,
+                0, bottom, 0,
+                s, 0, 0,
+                0, 0, -s);
+
+        addTri(buffer, matrix, r,g,b,a,
+                0, bottom, 0,
+                0, 0, s,
+                s, 0, 0);
+
+        addTri(buffer, matrix, r,g,b,a,
+                0, bottom, 0,
+                -s, 0, 0,
+                0, 0, s);
+
+        addTri(buffer, matrix, r,g,b,a,
+                0, bottom, 0,
+                0, 0, -s,
+                -s, 0, 0);
+    }
+
+    private static void addTri(
+            BufferBuilder buffer,
+            Matrix4f matrix,
+            int r, int g, int b, int a,
+            float x1,float y1,float z1,
+            float x2,float y2,float z2,
+            float x3,float y3,float z3
+    ) {
+        buffer.vertex(matrix, x1, y1, z1).color(r,g,b,a).endVertex();
+        buffer.vertex(matrix, x2, y2, z2).color(r,g,b,a).endVertex();
+        buffer.vertex(matrix, x3, y3, z3).color(r,g,b,a).endVertex();
     }
 }
