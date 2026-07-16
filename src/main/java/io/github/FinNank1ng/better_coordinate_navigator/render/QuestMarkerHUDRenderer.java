@@ -1,5 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator.render;
 
+import io.github.FinNank1ng.better_coordinate_navigator.client.IconManager;
 import io.github.FinNank1ng.better_coordinate_navigator.data.ClientQuestCache;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 
@@ -153,14 +154,19 @@ public class QuestMarkerHUDRenderer {
                 mc.getWindow()
                         .getGuiScaledHeight();
 
+
         int centerX =
                 screenWidth / 2;
 
         int centerY =
                 screenHeight / 2;
 
+
+
         double radians =
                 Math.toRadians(relativeYaw);
+
+
 
         /*
          * 单位方向向量
@@ -171,6 +177,8 @@ public class QuestMarkerHUDRenderer {
         double dirY =
                 -Math.cos(radians);
 
+
+
         double scaleX =
                 (centerX - EDGE_MARGIN)
                         /
@@ -179,6 +187,7 @@ public class QuestMarkerHUDRenderer {
                                         ? 0.0001
                                         : dirX
                         );
+
 
         double scaleY =
                 (centerY - EDGE_MARGIN)
@@ -189,23 +198,24 @@ public class QuestMarkerHUDRenderer {
                                         : dirY
                         );
 
+
         double scale =
                 Math.min(
                         scaleX,
                         scaleY
                 );
 
+
         int x =
                 centerX +
-                        (int)(
-                                dirX * scale
-                        );
+                        (int)(dirX * scale);
+
 
         int y =
                 centerY +
-                        (int)(
-                                dirY * scale
-                        );
+                        (int)(dirY * scale);
+
+
 
         /*
          * 高度差修正
@@ -219,12 +229,89 @@ public class QuestMarkerHUDRenderer {
                         )
                 );
 
+
         y -= heightOffset;
 
+
+
         /*
-         * 图标
+         * 自定义图标绘制
          */
-        String icon = "◆";
+
+        boolean iconDrawn = false;
+
+
+        if(marker.iconName != null
+                &&
+                !marker.iconName.isEmpty()) {
+
+
+            var icon =
+                    IconManager.getIcon(
+                            marker.iconName
+                    );
+
+
+            if(icon != null) {
+
+
+                IconManager.drawIcon(
+                        g,
+                        icon,
+                        x,
+                        y
+                );
+
+
+                iconDrawn = true;
+            }
+        }
+
+
+        /*
+         * 没有自定义图标
+         * 使用默认菱形
+         */
+        if(!iconDrawn) {
+
+
+            String defaultIcon = "◆";
+
+
+            g.drawString(
+                    mc.font,
+                    defaultIcon,
+                    x,
+                    y,
+                    0xFFD700,
+                    true
+            );
+        }
+
+
+
+        /*
+         * 没有自定义图片
+         * 使用默认菱形
+         */
+        if(!iconDrawn) {
+
+
+            String defaultIcon = "◆";
+
+
+            g.drawString(
+                    mc.font,
+                    defaultIcon,
+                    x,
+                    y,
+                    0xFFD700,
+                    true
+            );
+
+        }
+
+
 
         /*
          * 距离
@@ -232,10 +319,13 @@ public class QuestMarkerHUDRenderer {
         String distanceText =
                 (int) distance + "m";
 
+
+
         /*
          * 高度差
          */
         String heightText;
+
 
         if (dy > 3) {
 
@@ -246,7 +336,7 @@ public class QuestMarkerHUDRenderer {
         else if (dy < -3) {
 
             heightText =
-                    "↓" + (int) Math.abs(dy) + "m";
+                    "↓" + (int)Math.abs(dy) + "m";
 
         }
         else {
@@ -256,17 +346,7 @@ public class QuestMarkerHUDRenderer {
 
         }
 
-        /*
-         * 图标
-         */
-        g.drawString(
-                mc.font,
-                icon,
-                x,
-                y,
-                0xFFD700,
-                true
-        );
+
 
         /*
          * 名字
@@ -275,13 +355,13 @@ public class QuestMarkerHUDRenderer {
                 mc.font,
                 marker.name,
                 x -
-                        mc.font.width(
-                                marker.name
-                        ) / 2,
+                        mc.font.width(marker.name) / 2,
                 y + 12,
                 0xFFFFFF,
                 true
         );
+
+
 
         /*
          * 距离
@@ -290,13 +370,13 @@ public class QuestMarkerHUDRenderer {
                 mc.font,
                 distanceText,
                 x -
-                        mc.font.width(
-                                distanceText
-                        ) / 2,
+                        mc.font.width(distanceText) / 2,
                 y + 22,
                 0xAAAAAA,
                 true
         );
+
+
 
         /*
          * 高度差
@@ -305,9 +385,7 @@ public class QuestMarkerHUDRenderer {
                 mc.font,
                 heightText,
                 x -
-                        mc.font.width(
-                                heightText
-                        ) / 2,
+                        mc.font.width(heightText) / 2,
                 y + 32,
                 0x55FF55,
                 true

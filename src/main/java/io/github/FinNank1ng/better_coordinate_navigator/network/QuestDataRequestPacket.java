@@ -38,10 +38,8 @@ public class QuestDataRequestPacket {
                 return;
             }
 
-            QuestManager manager =
-                    QuestManager.get(
-                            () -> player.serverLevel().getDataStorage()
-                    );
+            QuestManager manager = QuestManager.get(player.serverLevel());
+
             LOGGER.debug(
                     "[BCN] Manager Hash = "
                             + System.identityHashCode(manager)

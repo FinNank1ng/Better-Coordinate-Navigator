@@ -33,15 +33,15 @@ public class ModCommands {
 
                                 // create
                                 .then(Commands.literal("create")
-                                        .then(
-                                                Commands.argument("pos", Vec3Argument.vec3())
-                                                        .then(
-                                                                Commands.argument(
-                                                                                "name",
-                                                                                StringArgumentType.greedyString()
-                                                                        )
-                                                                        .executes(ModCommands::createMarker)
+                                        .then(Commands.argument("pos", Vec3Argument.vec3())
+                                                .then(Commands.argument("name", StringArgumentType.greedyString())
+                                                        .executes(ModCommands::createMarker)
+                                                        // [可选项] 自定义icon图标
+                                                        .then(Commands.argument("icon", StringArgumentType.string())
+                                                                .executes(ModCommands::createMarker)
                                                         )
+
+                                                )
                                         )
                                 )
 
@@ -56,21 +56,13 @@ public class ModCommands {
 
                                 // remove
                                 .then(Commands.literal("remove")
-                                        .then(
-                                                Commands.argument(
-                                                                "name",
-                                                                StringArgumentType.greedyString()
-                                                        )
-                                                        .executes(ModCommands::removeMarker)
+                                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                                .executes(ModCommands::removeMarker)
                                         )
                                 )
                                 .then(Commands.literal("track")
-                                        .then(
-                                                Commands.argument(
-                                                                "name",
-                                                                StringArgumentType.greedyString()
-                                                        )
-                                                        .executes(ModCommands::trackMarker)
+                                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                                .executes(ModCommands::trackMarker)
                                         )
                                 )
 
@@ -78,15 +70,32 @@ public class ModCommands {
                                 .then(Commands.literal("untrack")
                                         .executes(ModCommands::untrackMarker)
                                 )
+                                // icon
+                                .then(Commands.literal("icon")
+                                        // 设置图标
+                                        .then(Commands.literal("set")
+                                                .then(Commands.argument("name", StringArgumentType.string())
+                                                        .then(Commands.argument("icon", StringArgumentType.string())
+                                                                .executes(
+                                                                        ModCommands::setMarkerIcon
+                                                                )
+                                                        )
+                                                )
+                                        )
 
+                                        // 清除图标
+                                        .then(Commands.literal("clear").then(
+                                                Commands.argument("name", StringArgumentType.string())
+                                                        .executes(
+                                                                ModCommands::clearMarkerIcon
+                                                        )
+                                                )
+                                        )
+                                )
                                 // info
                                 .then(Commands.literal("info")
-                                        .then(
-                                                Commands.argument(
-                                                                "name",
-                                                                StringArgumentType.greedyString()
-                                                        )
-                                                        .executes(ModCommands::infoMarker)
+                                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                                .executes(ModCommands::infoMarker)
                                         )
                                 )
                         )
@@ -94,50 +103,57 @@ public class ModCommands {
     }
 
     private static QuestManager getManager(CommandContext<CommandSourceStack> context) {
-        return QuestManager.get(
-                () -> context.getSource()
-                        .getLevel()
-                        .getDataStorage()
-        );
+        return QuestManager.get(context.getSource().getLevel());
     }
 
-    private static int showHelp(
-            CommandContext<CommandSourceStack> context
-    ) {
+    private static int showHelp(CommandContext<CommandSourceStack> context) {
 
         context.getSource().sendSuccess(
                 () -> Component.literal("""
-                    §6§l========== Better coordinate navigator ==========
-                    
-                    §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
-                    
-                    §e[任务点管理]
-                    
-                    §a/bcn list
-                    §7查看所有任务点
-                    
-                    §a/bcn marker create <pos> <name>
-                    §7创建任务点
-                    
-                    §a/bcn marker remove <name>
-                    §7删除任务点
-                    
-                    §a/bcn marker rename <old> <new>
-                    §7重命名任务点
-                    
-                    §a/bcn marker info <name>
-                    §7查看任务点详细信息
-                    
-                    §b[任务追踪]
-                    
-                    §a/bcn marker track <name>
-                    §7开始追踪任务点
-                    
-                    §a/bcn marker untrack
-                    §7取消当前追踪
-                    §8------------------------------------
-                    
-                    """),
+                §6§l========== Better Coordinate Navigator ==========
+                
+                §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
+                §7版本: §e1.3.1-SNAPSHOT
+                
+                §e[任务点管理]
+                
+                §a/bcn list
+                §7查看所有任务点
+                
+                §a/bcn marker create <pos> <name> [icon]
+                §7创建任务点
+                §8icon 可选自定义图标名称
+                
+                §a/bcn marker remove <name>
+                §7删除任务点
+                
+                §a/bcn marker rename <old> <new>
+                §7重命名任务点
+                
+                §a/bcn marker info <name>
+                §7查看任务点详细信息
+                
+                §e[自定义图标]
+                
+                §a/bcn marker icon set <name> <icon>
+                §7设置任务点自定义图标
+                
+                §a/bcn marker icon clear <name>
+                §7清除任务点自定义图标
+                
+                §7图标文件位置:
+                §f.minecraft/better_coordinate_navigator/Picture/
+                
+                §b[任务追踪]
+                
+                §a/bcn marker track <name>
+                §7开始追踪任务点
+                
+                §a/bcn marker untrack
+                §7取消当前追踪
+                
+                §8------------------------------------
+                """),
                 false
         );
 
@@ -151,7 +167,7 @@ public class ModCommands {
 
         if (manager.getMarkers().isEmpty()) {
             context.getSource().sendSuccess(
-                    () -> Component.literal("当前没有任何任务点。"),
+                    () -> Component.literal("§7当前没有任何任务点。"),
                     false
             );
             return 0;
@@ -178,7 +194,7 @@ public class ModCommands {
 
             builder.append("\n");
 
-            builder.append("  §7坐标: §b")
+            builder.append("§7坐标: §b")
                     .append(String.format(
                             "%.1f %.1f %.1f",
                             marker.x,
@@ -226,7 +242,7 @@ public class ModCommands {
         context.getSource().sendSuccess(
                 () -> Component.literal(
                         String.format(
-                                """
+                                """     
                                 §a 任务点创建成功
                                 
                                 §7 名称: §f%s
@@ -381,6 +397,118 @@ public class ModCommands {
         return 1;
     }
 
+    private static int setMarkerIcon(
+            CommandContext<CommandSourceStack> context
+    ){
+
+        String name =
+                StringArgumentType.getString(
+                        context,
+                        "name"
+                );
+
+        String icon =
+                StringArgumentType.getString(
+                        context,
+                        "icon"
+                );
+
+        ServerPlayer player = context.getSource().getPlayer();
+
+        QuestManager manager = QuestManager.get(player.serverLevel());
+
+        QuestMarker marker = manager.getMarker(name);
+
+
+        if(marker == null){
+
+            context.getSource()
+                    .sendFailure(
+                            Component.literal(
+                                    "§c 不存在的标点: "
+                                            + name
+                            )
+                    );
+
+            return 0;
+        }
+
+
+        marker.iconName = icon;
+
+
+        manager.setDirty();
+
+
+
+        QuestSyncHelper.syncToPlayer(
+                player,
+                manager
+        );
+
+
+
+        context.getSource()
+                .sendSuccess(
+                        () -> Component.literal(
+                                "§6 标点 ["+name+"] 自定义图标修改为 ["+icon+"] "
+                        ),
+                        true
+                );
+
+        return 1;
+    }
+
+    private static int clearMarkerIcon(
+            CommandContext<CommandSourceStack> context
+    ){
+
+        String name = StringArgumentType.getString(
+                context,
+                "name"
+        );
+
+        ServerPlayer player = context.getSource().getPlayer();
+
+        QuestManager manager = QuestManager.get(player.serverLevel());
+
+        QuestMarker marker =
+                manager.getMarker(name);
+
+
+        if(marker == null){
+
+            context.getSource()
+                    .sendFailure(
+                            Component.literal(
+                                    "§c 不存在的标点: "
+                                            + name
+                            )
+                    );
+
+            return 0;
+        }
+
+        marker.iconName = "";
+
+        manager.setDirty();
+
+        QuestSyncHelper.syncToPlayer(
+                player,
+                manager
+        );
+
+        context.getSource()
+                .sendSuccess(
+                        () -> Component.literal(
+                                "§7 标点 ["+name+"] 已恢复默认图标"
+                        ),
+                        true
+                );
+
+        return 1;
+    }
+
     // 标记点信息
     private static int infoMarker(
             CommandContext<CommandSourceStack> context
@@ -403,7 +531,7 @@ public class ModCommands {
             context.getSource()
                     .sendFailure(
                             Component.literal(
-                                    "未找到任务点 [" + name + "]"
+                                    "§c 未找到任务点 ["+name+"]"
                             )
                     );
 
@@ -412,6 +540,7 @@ public class ModCommands {
 
         String text = """
         §6§l========== Marker Info ==========
+        
         §e名称
         §f%s
         
@@ -421,8 +550,12 @@ public class ModCommands {
         §e描述
         §7%s
         
+        §e图标
+        %s
+        
         §e状态
         %s
+        
         §8===================================
         """
                 .formatted(
@@ -430,12 +563,17 @@ public class ModCommands {
                         marker.x,
                         marker.y,
                         marker.z,
-                        marker.description.isBlank()
-                                ? "暂无描述"
+                        marker.description == null
+                                || marker.description.isEmpty()
+                                ? "无"
                                 : marker.description,
+                        marker.iconName == null
+                                || marker.iconName.isEmpty()
+                                ? "§7默认 ◆"
+                                : "§a" + marker.iconName,
                         marker.tracked
-                                ? "§a 追踪中"
-                                : "§7 未追踪"
+                                ? "§a正在追踪"
+                                : "§7未追踪"
                 );
 
         context.getSource()

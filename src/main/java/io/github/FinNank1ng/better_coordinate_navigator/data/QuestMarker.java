@@ -39,7 +39,7 @@ public class QuestMarker {
      *
      * assets/...png
      */
-    public String iconTexture;
+    public String iconName;
 
     /*
      * 显示距离
@@ -91,7 +91,7 @@ public class QuestMarker {
 
         this.iconType = "DEFAULT";
 
-        this.iconTexture = "";
+        this.iconName = "";
 
         this.visibleDistance = 256.0D;
 
@@ -123,7 +123,7 @@ public class QuestMarker {
 
         iconType = buf.readUtf();
 
-        iconTexture = buf.readUtf();
+        iconName = buf.readUtf();
 
         visibleDistance = buf.readDouble();
 
@@ -157,7 +157,7 @@ public class QuestMarker {
 
         buf.writeUtf(iconType);
 
-        buf.writeUtf(iconTexture);
+        buf.writeUtf(iconName);
 
         buf.writeDouble(visibleDistance);
 
@@ -191,7 +191,7 @@ public class QuestMarker {
 
         tag.putString("iconType", iconType);
 
-        tag.putString("iconTexture", iconTexture);
+        tag.putString("iconName", iconName);
 
         tag.putDouble(
                 "visibleDistance",
@@ -250,8 +250,8 @@ public class QuestMarker {
         marker.iconType =
                 tag.getString("iconType");
 
-        marker.iconTexture =
-                tag.getString("iconTexture");
+        marker.iconName =
+                tag.getString("iconName");
 
         marker.visibleDistance =
                 tag.contains("visibleDistance")

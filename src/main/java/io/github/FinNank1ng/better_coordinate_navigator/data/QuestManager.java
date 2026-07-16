@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.DimensionDataStorage;
+import net.minecraft.server.level.ServerLevel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,8 +51,15 @@ public class QuestManager extends SavedData {
     /**
      * 获取世界数据实例
      */
-    public static QuestManager get(Supplier<DimensionDataStorage> storageSupplier) {
-        return storageSupplier.get().computeIfAbsent(
+    public static QuestManager get(
+            ServerLevel level
+    ) {
+
+        DimensionDataStorage storage =
+                level.getDataStorage();
+
+
+        return storage.computeIfAbsent(
                 QuestManager::load,
                 QuestManager::new,
                 "quest_manager"
