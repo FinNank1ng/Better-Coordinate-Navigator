@@ -213,6 +213,11 @@ public class QuestMarker {
                 showWorldMarker
         );
 
+        tag.putBoolean(
+                "tracked",
+                tracked
+        );
+
         tag.putString(
                 "state",
                 state
@@ -276,6 +281,12 @@ public class QuestMarker {
                 !tag.contains("showWorldMarker")
                         || tag.getBoolean(
                         "showWorldMarker"
+                );
+
+        marker.tracked =
+                tag.contains("tracked")
+                        && tag.getBoolean(
+                        "tracked"
                 );
 
         marker.state =
