@@ -153,9 +153,9 @@ public class QuestManager extends SavedData {
     }
 
     /**
-     * 取消标点追踪
+     * 取消所有标点追踪
      */
-    public void clearTrackedMarker() {
+    public void clearTrackedMarkers() {
 
         for (QuestMarker marker : markers) {
             marker.tracked = false;
@@ -163,31 +163,63 @@ public class QuestManager extends SavedData {
 
         setDirty();
     }
+    /**
+     * 取消单个标点追踪
+     */
+    public boolean untrackMarker(String name){
+
+        QuestMarker marker = getMarker(name);
+
+        if(marker == null){
+            return false;
+        }
+
+        marker.tracked = false;
+
+        setDirty();
+
+        return true;
+    }
 
     /**
      * 设置标点追踪
      */
-    public void setTrackedMarker(String name) {
+    public boolean trackMarker(String name) {
 
-        clearTrackedMarker();
+        QuestMarker target = getMarker(name);
 
-        QuestMarker marker = getMarker(name);
-
-        if (marker != null) {
-            marker.tracked = true;
+        if(target == null){
+            return false;
         }
 
-        setDirty();
+
+        boolean changed = false;
+
+
+        for(QuestMarker marker : markers){
+
+            boolean shouldTrack = marker == target;
+
+            if(marker.tracked != shouldTrack){
+
+                marker.tracked = shouldTrack;
+
+                changed = true;
+            }
+        }
+
+        if(changed){
+            setDirty();
+        }
+
+        return true;
     }
 
-    public QuestMarker getTrackedMarker() {
+    public List<QuestMarker> getTrackedMarkers(){
 
         return markers.stream()
-                .filter(marker ->
-                        marker.tracked
-                )
-                .findFirst()
-                .orElse(null);
+                .filter(marker -> marker.tracked)
+                .toList();
     }
     /**
      * 客户端缓存层

@@ -60,15 +60,21 @@ public class ModCommands {
                                                 .executes(ModCommands::removeMarker)
                                         )
                                 )
+                                // track 单个标点
                                 .then(Commands.literal("track")
                                         .then(Commands.argument("name", StringArgumentType.greedyString())
                                                 .executes(ModCommands::trackMarker)
                                         )
                                 )
-
-                                // untrack
+                                // untrack 单个标点
                                 .then(Commands.literal("untrack")
-                                        .executes(ModCommands::untrackMarker)
+                                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                                .executes(ModCommands::untrackMarker)
+                                        )
+                                )
+                                // clear 所有track的标点
+                                .then(Commands.literal("cleartrack")
+                                        .executes(ModCommands::clearTrackedMarkers)
                                 )
                                 // icon
                                 .then(Commands.literal("icon")
@@ -149,9 +155,11 @@ public class ModCommands {
                 §a/bcn marker track <name>
                 §7开始追踪任务点
                 
-                §a/bcn marker untrack
-                §7取消当前追踪
+                §a/bcn marker untrack <name>
+                §7取消指定任务点追踪
                 
+                §a/bcn marker cleartrack
+                §7取消全部任务追踪
                 §8------------------------------------
                 """),
                 false
@@ -340,7 +348,7 @@ public class ModCommands {
             return 0;
         }
 
-        manager.setTrackedMarker(name);
+        manager.trackMarker(name);
 
         if (context.getSource()
                 .getEntity() instanceof ServerPlayer player) {
@@ -366,18 +374,66 @@ public class ModCommands {
         return 1;
     }
 
-    // 取消追踪标记点
+    // 取消追踪某个标记点
     private static int untrackMarker(
             CommandContext<CommandSourceStack> context
     ) {
 
+        String name =
+                StringArgumentType.getString(
+                        context,
+                        "name"
+                );
+
         QuestManager manager =
                 getManager(context);
 
-        manager.clearTrackedMarker();
 
-        if (context.getSource()
-                .getEntity() instanceof ServerPlayer player) {
+        if(!manager.untrackMarker(name)){
+
+            context.getSource().sendFailure(
+                    Component.literal(
+                            "§c 未找到追踪点 [" + name + "]"
+                    )
+            );
+
+            return 0;
+        }
+
+
+        if (context.getSource().getEntity() instanceof ServerPlayer player) {
+
+            QuestSyncHelper.syncToPlayer(
+                    player,
+                    manager
+            );
+        }
+
+
+        context.getSource().sendSuccess(
+                () -> Component.literal(
+                        """
+                        §6 已取消追踪
+                        
+                        §7目标: §f%s
+                        """.formatted(name)
+                ),
+                true
+        );
+
+        return 1;
+    }
+
+    // 取消所有追踪的标记点
+    private static int clearTrackedMarkers(
+            CommandContext<CommandSourceStack> context
+    ){
+        QuestManager manager = getManager(context);
+
+        manager.clearTrackedMarkers();
+
+
+        if (context.getSource().getEntity() instanceof ServerPlayer player) {
 
             QuestSyncHelper.syncToPlayer(
                     player,
@@ -387,31 +443,27 @@ public class ModCommands {
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        """
-                        §6 已取消任务追踪
-                        """
+                        "§6 已清除全部任务追踪"
                 ),
                 true
         );
 
         return 1;
     }
-
+    // 设置对HUD标点的自定义图像
     private static int setMarkerIcon(
             CommandContext<CommandSourceStack> context
     ){
 
-        String name =
-                StringArgumentType.getString(
-                        context,
-                        "name"
-                );
+        String name = StringArgumentType.getString(
+                context,
+                "name"
+        );
 
-        String icon =
-                StringArgumentType.getString(
-                        context,
-                        "icon"
-                );
+        String icon = StringArgumentType.getString(
+                context,
+                "icon"
+        );
 
         ServerPlayer player = context.getSource().getPlayer();
 
@@ -422,13 +474,12 @@ public class ModCommands {
 
         if(marker == null){
 
-            context.getSource()
-                    .sendFailure(
-                            Component.literal(
-                                    "§c 不存在的标点: "
-                                            + name
-                            )
-                    );
+            context.getSource().sendFailure(
+                    Component.literal(
+                            "§c 不存在的标点: "
+                                    + name
+                    )
+            );
 
             return 0;
         }
@@ -448,13 +499,12 @@ public class ModCommands {
 
 
 
-        context.getSource()
-                .sendSuccess(
-                        () -> Component.literal(
-                                "§6 标点 ["+name+"] 自定义图标修改为 ["+icon+"] "
-                        ),
-                        true
-                );
+        context.getSource().sendSuccess(
+                () -> Component.literal(
+                        "§6 标点 ["+name+"] 自定义图标修改为 ["+icon+"] "
+                ),
+                true
+        );
 
         return 1;
     }
@@ -478,13 +528,12 @@ public class ModCommands {
 
         if(marker == null){
 
-            context.getSource()
-                    .sendFailure(
-                            Component.literal(
-                                    "§c 不存在的标点: "
-                                            + name
-                            )
-                    );
+            context.getSource().sendFailure(
+                    Component.literal(
+                            "§c 不存在的标点: "
+                                    + name
+                    )
+            );
 
             return 0;
         }
@@ -498,13 +547,12 @@ public class ModCommands {
                 manager
         );
 
-        context.getSource()
-                .sendSuccess(
-                        () -> Component.literal(
-                                "§7 标点 ["+name+"] 已恢复默认图标"
-                        ),
-                        true
-                );
+        context.getSource().sendSuccess(
+                () -> Component.literal(
+                        "§7 标点 ["+name+"] 已恢复默认图标"
+                ),
+                true
+        );
 
         return 1;
     }
@@ -528,12 +576,11 @@ public class ModCommands {
 
         if (marker == null) {
 
-            context.getSource()
-                    .sendFailure(
-                            Component.literal(
-                                    "§c 未找到任务点 ["+name+"]"
-                            )
-                    );
+            context.getSource().sendFailure(
+                    Component.literal(
+                            "§c 未找到任务点 ["+name+"]"
+                    )
+            );
 
             return 0;
         }
