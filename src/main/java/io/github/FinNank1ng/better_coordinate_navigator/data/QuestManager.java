@@ -182,39 +182,27 @@ public class QuestManager extends SavedData {
     }
 
     /**
-     * 设置标点追踪
+     * 添加或设置标点追踪
      */
     public boolean trackMarker(String name) {
 
-        QuestMarker target = getMarker(name);
+        QuestMarker marker = getMarker(name);
 
-        if(target == null){
+        if(marker == null){
             return false;
         }
 
 
-        boolean changed = false;
+        if(!marker.tracked){
 
+            marker.tracked = true;
 
-        for(QuestMarker marker : markers){
-
-            boolean shouldTrack = marker == target;
-
-            if(marker.tracked != shouldTrack){
-
-                marker.tracked = shouldTrack;
-
-                changed = true;
-            }
-        }
-
-        if(changed){
             setDirty();
         }
 
         return true;
     }
-
+    // 未用
     public List<QuestMarker> getTrackedMarkers(){
 
         return markers.stream()
