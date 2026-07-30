@@ -34,13 +34,8 @@ public class ModCommands {
                                 // create
                                 .then(Commands.literal("create")
                                         .then(Commands.argument("pos", Vec3Argument.vec3())
-                                                .then(Commands.argument("name", StringArgumentType.greedyString())
+                                                .then(Commands.argument("name", StringArgumentType.string())
                                                         .executes(ModCommands::createMarker)
-                                                        // [可选项] 自定义icon图标
-                                                        .then(Commands.argument("icon", StringArgumentType.string())
-                                                                .executes(ModCommands::createMarker)
-                                                        )
-
                                                 )
                                         )
                                 )
@@ -48,7 +43,7 @@ public class ModCommands {
                                 // rename
                                 .then(Commands.literal("rename")
                                         .then(Commands.argument("oldName", StringArgumentType.string())
-                                                .then(Commands.argument("newName", StringArgumentType.greedyString())
+                                                .then(Commands.argument("newName", StringArgumentType.string())
                                                         .executes(ModCommands::renameMarker)
                                                 )
                                         )
@@ -56,19 +51,19 @@ public class ModCommands {
 
                                 // remove
                                 .then(Commands.literal("remove")
-                                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                        .then(Commands.argument("name", StringArgumentType.string())
                                                 .executes(ModCommands::removeMarker)
                                         )
                                 )
                                 // track 单个标点
                                 .then(Commands.literal("track")
-                                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                        .then(Commands.argument("name", StringArgumentType.string())
                                                 .executes(ModCommands::trackMarker)
                                         )
                                 )
                                 // untrack 单个标点
                                 .then(Commands.literal("untrack")
-                                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                        .then(Commands.argument("name", StringArgumentType.string())
                                                 .executes(ModCommands::untrackMarker)
                                         )
                                 )
@@ -100,7 +95,7 @@ public class ModCommands {
                                 )
                                 // info
                                 .then(Commands.literal("info")
-                                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                        .then(Commands.argument("name", StringArgumentType.string())
                                                 .executes(ModCommands::infoMarker)
                                         )
                                 )
@@ -119,16 +114,15 @@ public class ModCommands {
                 §6§l========== Better Coordinate Navigator ==========
                 
                 §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
-                §7版本: §e0.1.3.1-SNAPSHOT
+                §7版本: §e0.1.4.0-SNAPSHOT
                 
                 §e[任务点管理]
                 
                 §a/bcn list
                 §7查看所有任务点
                 
-                §a/bcn marker create <pos> <name> [icon]
+                §a/bcn marker create <pos> <name>
                 §7创建任务点
-                §8icon 可选自定义图标名称
                 
                 §a/bcn marker remove <name>
                 §7删除任务点
@@ -160,6 +154,8 @@ public class ModCommands {
                 
                 §a/bcn marker cleartrack
                 §7取消全部任务追踪
+                
+                §e<name>尽量以"<name>"操作，实现带空格或非英文字符
                 §8------------------------------------
                 """),
                 false
