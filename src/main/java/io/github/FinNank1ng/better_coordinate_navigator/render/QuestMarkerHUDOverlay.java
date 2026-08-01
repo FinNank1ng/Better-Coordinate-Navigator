@@ -4,6 +4,8 @@ import com.mojang.logging.LogUtils;
 import io.github.FinNank1ng.better_coordinate_navigator.data.ClientQuestCache;
 import io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets;
 import io.github.FinNank1ng.better_coordinate_navigator.network.QuestDataRequestPacket;
+import io.github.FinNank1ng.better_coordinate_navigator.client.ConfigLoader;
+import io.github.FinNank1ng.better_coordinate_navigator.client.ClientConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraftforge.client.event.RenderGuiEvent;
@@ -45,5 +47,12 @@ public class QuestMarkerHUDOverlay {
 
         GuiGraphics g = event.getGuiGraphics();
 
+        /*
+         * HUD绘制
+         */
+        QuestMarkerHUDRenderer.render(
+                g,
+                mc
+        );
     }
 }
