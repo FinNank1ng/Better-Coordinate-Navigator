@@ -1,6 +1,7 @@
 package io.github.FinNank1ng.better_coordinate_navigator;
 
 
+import io.github.FinNank1ng.better_coordinate_navigator.client.ConfigLoader;
 import io.github.FinNank1ng.better_coordinate_navigator.client.IconManager;
 import io.github.FinNank1ng.better_coordinate_navigator.render.QuestMarkerHUDOverlay;
 import net.minecraftforge.api.distmarker.Dist;
@@ -28,6 +29,13 @@ public class ClientSetup {
          * 创建客户端自定义资源文件夹
          */
         IconManager.init();
+
+
+
+        /*
+         * 加载客户端配置
+         */
+        ConfigLoader.init();
 
 
 
