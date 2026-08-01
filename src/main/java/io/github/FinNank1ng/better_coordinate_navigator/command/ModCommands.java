@@ -4,16 +4,20 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 import io.github.FinNank1ng.better_coordinate_navigator.network.QuestSyncHelper;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerPlayer;
+
+import java.util.Collection;
 
 public class ModCommands {
 
@@ -55,18 +59,51 @@ public class ModCommands {
                                                 .executes(ModCommands::removeMarker)
                                         )
                                 )
-                                // track 单个标点
+                                // track 标点
                                 .then(Commands.literal("track")
+
+                                        /*
+                                         * 玩家自己追踪
+                                         */
                                         .then(Commands.argument("name", StringArgumentType.string())
-                                                .executes(ModCommands::trackMarker)
+                                                .executes(ModCommands::trackMarker
+                                                )
+                                        )
+
+                                        /*
+                                         * 管理员指定玩家追踪
+                                         */
+                                        .then(Commands.literal("player").requires(source -> source.hasPermission(2)
+                                                ).then(Commands.argument("player", EntityArgument.players())
+                                                        .then(Commands.argument("name", StringArgumentType.string())
+                                                                .executes(ModCommands::trackPlayerMarker
+                                                                )
+                                                        )
+                                                )
                                         )
                                 )
-                                // untrack 单个标点
+                                // untrack
                                 .then(Commands.literal("untrack")
+
+                                        /*
+                                        /* 玩家自己取消追踪
+                                         */
                                         .then(Commands.argument("name", StringArgumentType.string())
                                                 .executes(ModCommands::untrackMarker)
                                         )
+
+                                        /*
+                                        /* 管理员指定玩家取消追踪
+                                         */
+                                        .then(Commands.literal("player")
+                                                .then(Commands.argument("player", EntityArgument.players())
+                                                        .then(Commands.argument("name", StringArgumentType.string())
+                                                                .executes(ModCommands::untrackPlayerMarker)
+                                                        )
+                                                )
+                                        )
                                 )
+
                                 // clear 所有track的标点
                                 .then(Commands.literal("cleartrack")
                                         .executes(ModCommands::clearTrackedMarkers)
@@ -114,14 +151,14 @@ public class ModCommands {
                 §6§l========== Better Coordinate Navigator ==========
                 
                 §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
-                §7版本: §e0.1.4.0-SNAPSHOT
+                §7版本: §e0.2.0.0-alpha
                 
                 §e[任务点管理]
                 
                 §a/bcn list
                 §7查看所有任务点
                 
-                §a/bcn marker create <pos> <name>
+                §a/bcn marker create <pos> <name>s
                 §7创建任务点
                 
                 §a/bcn marker remove <name>
@@ -149,8 +186,14 @@ public class ModCommands {
                 §a/bcn marker track <name>
                 §7开始追踪任务点
                 
+                §a/bcn marker track player <player> <name>
+                §7由管理员对指定玩家设置追踪任务点(ADMIN)
+                
                 §a/bcn marker untrack <name>
                 §7取消指定任务点追踪
+                
+                §a/bcn marker untrack player <player> <name>
+                §7由管理员对指定玩家取消追踪任务点(ADMIN)
                 
                 §a/bcn marker cleartrack
                 §7取消全部任务追踪
@@ -248,7 +291,6 @@ public class ModCommands {
                         String.format(
                                 """     
                                 §a 任务点创建成功
-                                
                                 §7 名称: §f%s
                                 §7 坐标: §b%.1f %.1f %.1f
                                 """,
@@ -285,7 +327,7 @@ public class ModCommands {
         if (!success) {
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到任务点 [" + oldName + "]"
+                            "§c 未找到任务点 ["+oldName+"]"
                     )
             );
             return 0;
@@ -301,7 +343,6 @@ public class ModCommands {
                 () -> Component.literal(
                         """
                         §a 任务点重命名成功
-                        
                         §7 旧名称: §f%s
                         §7 新名称: §a%s
                         """
@@ -337,7 +378,7 @@ public class ModCommands {
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到任务点 [" + name + "]"
+                            "§c 未找到任务点 ["+name+"]"
                     )
             );
 
@@ -359,7 +400,6 @@ public class ModCommands {
                 () -> Component.literal(
                         """
                         §a 已开始追踪
-                        
                         §7 目标: §f%s
                         """
                                 .formatted(name)
@@ -389,7 +429,7 @@ public class ModCommands {
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到追踪点 [" + name + "]"
+                            "§c 未找到追踪点 ["+name+"]"
                     )
             );
 
@@ -410,7 +450,6 @@ public class ModCommands {
                 () -> Component.literal(
                         """
                         §6 已取消追踪
-                        
                         §7目标: §f%s
                         """.formatted(name)
                 ),
@@ -446,6 +485,128 @@ public class ModCommands {
 
         return 1;
     }
+
+
+    private static int trackPlayerMarker(CommandContext<CommandSourceStack> context)
+            throws CommandSyntaxException {
+
+        Collection<ServerPlayer> players = EntityArgument.getPlayers(
+                context,
+                "player"
+        );
+
+        String playerNames = players.stream()
+                .map(player -> player.getName().getString())
+                .reduce((a,b)->a+", "+b)
+                .orElse("");
+
+
+        String name = StringArgumentType.getString(
+                context,
+                "name"
+        );
+
+        QuestManager manager = getManager(context);
+
+        QuestMarker marker = manager.getMarker(name);
+
+        if(marker == null){
+
+            context.getSource().sendFailure(
+                    Component.literal(
+                            "§c 未找到任务点 ["+name+"]"
+                    )
+            );
+
+            return 0;
+        }
+
+
+        marker.tracked = true;
+
+
+        for(ServerPlayer player : players){
+
+            QuestSyncHelper.syncToPlayer(
+                    player,
+                    manager
+            );
+
+        }
+
+
+        context.getSource().sendSuccess(
+                () -> Component.literal(
+                        "§a 已设置玩家 §d[" + playerNames + "] §a追踪: §b[" + name + "]"
+                ),
+                true
+        );
+
+
+        return 1;
+    }
+
+    private static int untrackPlayerMarker(CommandContext<CommandSourceStack> context
+    ) throws CommandSyntaxException {
+
+
+        Collection<ServerPlayer> players = EntityArgument.getPlayers(
+                context,
+                "player"
+        );
+
+
+        String playerNames = players.stream()
+                .map(player -> player.getName().getString())
+                .reduce((a,b)->a+", "+b)
+                .orElse("");
+
+
+        String name = StringArgumentType.getString(
+                context,
+                "name"
+        );
+
+        QuestManager manager = getManager(context);
+
+        QuestMarker marker = manager.getMarker(name);
+
+        if(marker == null){
+
+            context.getSource().sendFailure(
+                    Component.literal(
+                            "§c 未找到任务点[" + name + "]"
+                    )
+            );
+
+            return 0;
+        }
+
+
+        marker.tracked = false;
+
+
+        for(ServerPlayer player : players){
+
+            QuestSyncHelper.syncToPlayer(
+                    player,
+                    manager
+            );
+
+        }
+
+
+        context.getSource().sendSuccess(
+                () -> Component.literal(
+                        "§6 已取消玩家 §d [" + playerNames + "] §6 追踪: §b [" + name + "]"
+                ),
+                true
+        );
+
+
+        return 1;
+    }
+
     // 设置对HUD标点的自定义图像
     private static int setMarkerIcon(
             CommandContext<CommandSourceStack> context
@@ -497,7 +658,7 @@ public class ModCommands {
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        "§6 标点 ["+name+"] 自定义图标修改为 ["+icon+"] "
+                        "§6 标点 §b["+name+"] §6自定义图标修改为 §b["+icon+"] "
                 ),
                 true
         );
@@ -545,7 +706,7 @@ public class ModCommands {
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        "§7 标点 ["+name+"] 已恢复默认图标"
+                        "§7 标点 §b["+name+"] §7已恢复默认图标"
                 ),
                 true
         );
@@ -653,7 +814,6 @@ public class ModCommands {
                     () -> Component.literal(
                             """
                             §a 已删除任务点
-                            
                             §7 名称: §f%s
                             """
                                     .formatted(name)
@@ -665,7 +825,7 @@ public class ModCommands {
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到任务点 [" + name + "]"
+                            "§c 未找到任务点 ["+name+"]"
                     )
             );
         }
