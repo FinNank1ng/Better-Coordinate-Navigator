@@ -151,7 +151,7 @@ public class ModCommands {
                 §6§l========== Better Coordinate Navigator ==========
                 
                 §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
-                §7版本: §e0.3.0.0-beta
+                §7版本: §e0.3.0.0-alpha
                 
                 §e[任务点管理]
                 
