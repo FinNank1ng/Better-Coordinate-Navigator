@@ -16,6 +16,7 @@ public class QuestMarker {
 
     public String description;
 
+    // 保留以兼容旧存档
     public boolean tracked;
 
     /*
@@ -133,11 +134,12 @@ public class QuestMarker {
 
         showWorldMarker = buf.readBoolean();
 
-        tracked = buf.readBoolean();
-
         state = buf.readUtf();
 
         extraData = buf.readUtf();
+
+        tracked = false;
+
     }
 
     /*
@@ -166,8 +168,6 @@ public class QuestMarker {
         buf.writeBoolean(showNavigator);
 
         buf.writeBoolean(showWorldMarker);
-
-        buf.writeBoolean(tracked);
 
         buf.writeUtf(state);
 
