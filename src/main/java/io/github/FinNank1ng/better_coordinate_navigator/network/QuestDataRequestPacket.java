@@ -53,7 +53,10 @@ public class QuestDataRequestPacket {
             CHANNEL.send(
                     PacketDistributor.PLAYER.with(() -> player),
                     new QuestDataUpdatePacket(
-                            manager.getMarkers()
+                            manager.getMarkers(),
+                            manager.getPlayerTrackedMarkers(
+                                    player.getUUID()
+                            )
                     )
             );
         });

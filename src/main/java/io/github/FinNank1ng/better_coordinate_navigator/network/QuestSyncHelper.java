@@ -4,6 +4,8 @@ import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
+import java.util.ArrayList;
+
 import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class QuestSyncHelper {
@@ -15,13 +17,22 @@ public class QuestSyncHelper {
 
         LOGGER.debug(
                 "[BCN] Sync To Player : "
-                        + manager.getMarkers().size()
+                        + player.getName().getString()
         );
 
         ModPackets.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
+                PacketDistributor.PLAYER.with(
+                        () -> player
+                ),
+
                 new QuestDataUpdatePacket(
-                        manager.getMarkers()
+
+                        new ArrayList<>(manager.getMarkers()),
+
+                        manager.getPlayerTrackedMarkers(
+                                player.getUUID()
+                        )
+
                 )
         );
     }
