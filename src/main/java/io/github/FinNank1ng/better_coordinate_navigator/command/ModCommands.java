@@ -151,14 +151,14 @@ public class ModCommands {
                 §6§l========== Better Coordinate Navigator ==========
                 
                 §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
-                §7版本: §e0.2.0.0-alpha
+                §7版本: §e0.3.0.0-beta
                 
                 §e[任务点管理]
                 
                 §a/bcn list
                 §7查看所有任务点
                 
-                §a/bcn marker create <pos> <name>s
+                §a/bcn marker create <pos> <name>
                 §7创建任务点
                 
                 §a/bcn marker remove <name>
@@ -235,8 +235,21 @@ public class ModCommands {
             builder.append("§e◆ §f")
                     .append(marker.name);
 
-            if (marker.tracked) {
+            boolean tracked = false;
+
+            if(context.getSource().getEntity() instanceof ServerPlayer player){
+
+                tracked = manager.isPlayerTracking(
+                        player.getUUID(),
+                        marker.name
+                );
+
+            }
+
+            if(tracked){
+
                 builder.append(" §a[追踪中]");
+
             }
 
             builder.append("\n");
@@ -360,7 +373,12 @@ public class ModCommands {
     // 追踪标记点
     private static int trackMarker(
             CommandContext<CommandSourceStack> context
-    ) {
+    ) throws CommandSyntaxException {
+
+        ServerPlayer player =
+                context.getSource()
+                        .getPlayerOrException();
+
 
         String name =
                 StringArgumentType.getString(
@@ -371,40 +389,35 @@ public class ModCommands {
         QuestManager manager =
                 getManager(context);
 
-        QuestMarker marker =
-                manager.getMarker(name);
 
-        if (marker == null) {
+        boolean success =
+                manager.trackPlayerMarker(
+                        player.getUUID(),
+                        name
+                );
+
+        if(!success){
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到任务点 ["+name+"]"
+                            "§c 未找到任务点 [" + name + "]"
                     )
             );
 
             return 0;
         }
 
-        manager.trackMarker(name);
 
-        if (context.getSource()
-                .getEntity() instanceof ServerPlayer player) {
-
-            QuestSyncHelper.syncToPlayer(
-                    player,
-                    manager
-            );
-        }
+        QuestSyncHelper.syncToPlayer(
+                player,
+                manager
+        );
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        """
-                        §a 已开始追踪
-                        §7 目标: §f%s
-                        """
-                                .formatted(name)
+                        "§a 已追踪: [" + name + "]"
                 ),
-                true
+                false
         );
 
         return 1;
@@ -413,7 +426,13 @@ public class ModCommands {
     // 取消追踪某个标记点
     private static int untrackMarker(
             CommandContext<CommandSourceStack> context
-    ) {
+    ) throws CommandSyntaxException {
+
+
+        ServerPlayer player =
+                context.getSource()
+                        .getPlayerOrException();
+
 
         String name =
                 StringArgumentType.getString(
@@ -425,11 +444,16 @@ public class ModCommands {
                 getManager(context);
 
 
-        if(!manager.untrackMarker(name)){
+
+        if(!manager.untrackPlayerMarker(
+                player.getUUID(),
+                name
+        )){
+
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到追踪点 ["+name+"]"
+                            "§c 未追踪任务点 [" + name + "]"
                     )
             );
 
@@ -437,13 +461,11 @@ public class ModCommands {
         }
 
 
-        if (context.getSource().getEntity() instanceof ServerPlayer player) {
 
-            QuestSyncHelper.syncToPlayer(
-                    player,
-                    manager
-            );
-        }
+        QuestSyncHelper.syncToPlayer(
+                player,
+                manager
+        );
 
 
         context.getSource().sendSuccess(
@@ -453,34 +475,39 @@ public class ModCommands {
                         §7目标: §f%s
                         """.formatted(name)
                 ),
-                true
+                false
         );
 
         return 1;
     }
 
-    // 取消所有追踪的标记点
+    // 清除自己的全部追踪
     private static int clearTrackedMarkers(
             CommandContext<CommandSourceStack> context
-    ){
+    )
+            throws CommandSyntaxException {
+
+        ServerPlayer player =
+                context.getSource()
+                        .getPlayerOrException();
+
         QuestManager manager = getManager(context);
 
-        manager.clearTrackedMarkers();
+        manager.clearPlayerTrackers(
+                player.getUUID()
+        );
 
 
-        if (context.getSource().getEntity() instanceof ServerPlayer player) {
-
-            QuestSyncHelper.syncToPlayer(
-                    player,
-                    manager
-            );
-        }
+        QuestSyncHelper.syncToPlayer(
+                player,
+                manager
+        );
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
                         "§6 已清除全部任务追踪"
                 ),
-                true
+                false
         );
 
         return 1;
@@ -521,11 +548,12 @@ public class ModCommands {
             return 0;
         }
 
-
-        marker.tracked = true;
-
-
         for(ServerPlayer player : players){
+
+            manager.trackPlayerMarker(
+                    player.getUUID(),
+                    name
+            );
 
             QuestSyncHelper.syncToPlayer(
                     player,
@@ -582,11 +610,13 @@ public class ModCommands {
             return 0;
         }
 
-
-        marker.tracked = false;
-
-
         for(ServerPlayer player : players){
+
+            manager.untrackPlayerMarker(
+                    player.getUUID(),
+                    name
+            );
+
 
             QuestSyncHelper.syncToPlayer(
                     player,
@@ -598,7 +628,7 @@ public class ModCommands {
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        "§6 已取消玩家 §d [" + playerNames + "] §6 追踪: §b [" + name + "]"
+                        "§6 已取消玩家 §d[" + playerNames + "] §6追踪: §b [" + name + "]"
                 ),
                 true
         );
@@ -735,31 +765,41 @@ public class ModCommands {
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到任务点 ["+name+"]"
+                            "§c 未找到任务点 [" + name + "]"
                     )
             );
 
             return 0;
         }
 
+        /*
+         * 当前玩家追踪状态
+         */
+        boolean tracked = false;
+
+
+        if(context.getSource().getEntity() instanceof ServerPlayer player){
+
+            tracked =
+                    manager.isPlayerTracking(
+                            player.getUUID(),
+                            marker.name
+                    );
+
+        }
+
         String text = """
         §6§l========== Marker Info ==========
-        
-        §e名称
-        §f%s
-        
-        §e坐标
-        §b%.1f %.1f %.1f
-        
-        §e描述
-        §7%s
-        
-        §e图标
-        %s
-        
-        §e状态
-        %s
-        
+
+        §e名称: §f%s
+    
+        §e坐标: §b%.1f %.1f %.1f
+
+        §e描述: §7%s
+
+        §e图标: %s
+
+        §e状态: %s
         §8===================================
         """
                 .formatted(
@@ -775,7 +815,7 @@ public class ModCommands {
                                 || marker.iconName.isEmpty()
                                 ? "§7默认 ◆"
                                 : "§a" + marker.iconName,
-                        marker.tracked
+                        tracked
                                 ? "§a正在追踪"
                                 : "§7未追踪"
                 );
