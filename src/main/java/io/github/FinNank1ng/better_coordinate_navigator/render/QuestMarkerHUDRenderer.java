@@ -47,7 +47,7 @@ public class QuestMarkerHUDRenderer {
             /*
              * 追踪
              */
-            if (!marker.tracked) {
+            if (!ClientQuestCache.isTracked(marker.name)) {
                 continue;
             }
 

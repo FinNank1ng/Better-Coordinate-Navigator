@@ -79,7 +79,7 @@ public class QuestMarkerWorldRenderer {
             /*
              * 追踪
              */
-            if (!marker.tracked) {
+            if (!ClientQuestCache.isTracked(marker.name)) {
 
                 continue;
 
