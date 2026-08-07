@@ -70,7 +70,7 @@ public class QuestMarkerHUDRenderer {
 
         double dx = marker.x - mc.player.getX();
 
-        double dy = marker.y - mc.player.getY();
+        double dy = marker.y - mc.gameRenderer.getMainCamera().getPosition().y;
 
         double dz = marker.z - mc.player.getZ();
 
@@ -98,11 +98,9 @@ public class QuestMarkerHUDRenderer {
         /*
          * 玩家朝向
          */
-        float playerYaw =
-                mc.player.getYRot();
+        float cameraYaw = mc.gameRenderer.getMainCamera().getYRot();
 
-        double relativeYaw =
-                targetYaw - playerYaw;
+        double relativeYaw = targetYaw - cameraYaw;
 
         while (relativeYaw > 180) {
             relativeYaw -= 360;
