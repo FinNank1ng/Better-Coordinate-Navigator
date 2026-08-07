@@ -9,6 +9,7 @@ import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 import io.github.FinNank1ng.better_coordinate_navigator.network.QuestSyncHelper;
 
+import io.github.FinNank1ng.better_coordinate_navigator.util.ModVersion;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -20,6 +21,8 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.Collection;
 
 public class ModCommands {
+
+    public static final String VERSION = "${file.jarVersion}";
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
 
@@ -151,7 +154,7 @@ public class ModCommands {
                 §6§l========== Better Coordinate Navigator ==========
                 
                 §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
-                §7版本: §e0.3.0.0-alpha
+                §7版本: §e%s
                 
                 §e[任务点管理]
                 
@@ -200,7 +203,9 @@ public class ModCommands {
                 
                 §e<name>尽量以"<name>"操作，实现带空格或非英文字符
                 §8------------------------------------
-                """),
+                """.formatted(
+                        ModVersion.getVersion()
+                )),
                 false
         );
 
