@@ -222,41 +222,6 @@ HUD 与世界标记拥有独立的显示配置，可以控制：
 
 <img width="1920" height="1080" alt="B1BA0711E3679DC7A31BD5039F876180" src="https://github.com/user-attachments/assets/61a9618e-c837-415c-9597-52a67586bba4" />
 
-
----
-
-## 项目结构
-
-项目采用模块化设计：
-
-```text
-data/
-    QuestManager
-    QuestMarker
-    ClientQuestCache
-
-network/
-    QuestDataUpdatePacket
-    QuestDataRequestPacket
-    QuestSyncHelper
-
-command/
-    ModCommands
-
-render/
-    QuestMarkerHUDRenderer
-    QuestMarkerRenderer
-
-config/
-    ClientConfig
-    ConfigLoader
-
-util/
-    ModVersion
-```
-
-服务器负责任务点与玩家追踪数据的管理，客户端负责缓存、HUD 与世界标记渲染。
-
 ---
 
 ## 数据与同步
