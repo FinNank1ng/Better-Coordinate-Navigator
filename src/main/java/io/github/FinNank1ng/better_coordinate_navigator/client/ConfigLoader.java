@@ -1,6 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator.client;
 
-
+import io.github.FinNank1ng.better_coordinate_navigator.util.ConfigMigration;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
@@ -39,7 +39,7 @@ public class ConfigLoader {
                 Minecraft.getInstance()
                         .gameDirectory,
 
-                "better_coordinate_navigator/config/config.json"
+                "config/better_coordinate_navigator/config/config.json"
         );
 
     }
@@ -47,6 +47,8 @@ public class ConfigLoader {
 
 
     public static void init(){
+
+        ConfigMigration.migrate();
 
         File file = getConfigFile();
 

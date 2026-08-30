@@ -5,6 +5,8 @@ public class ClientConfig {
 
     public int configVersion = 1;
 
+    public boolean checkUpdate = true;
+
     public HUD HUD = new HUD();
 
     public WorldMarker WorldMarker = new WorldMarker();
