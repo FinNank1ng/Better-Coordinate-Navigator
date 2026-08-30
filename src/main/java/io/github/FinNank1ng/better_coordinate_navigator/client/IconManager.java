@@ -57,7 +57,7 @@ public class IconManager {
                 Minecraft.getInstance()
                         .gameDirectory,
 
-                "better_coordinate_navigator/picture"
+                "config/better_coordinate_navigator/picture"
         );
 
     }
