@@ -1,5 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator.util;
 
+import io.github.FinNank1ng.better_coordinate_navigator.client.ConfigLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -19,6 +20,12 @@ public final class VersionCheckHandler {
      * 只在客户端进入游戏时调用一次。
      */
     public static void checkForUpdate() {
+
+        if (!ConfigLoader.CONFIG.checkUpdate) {
+
+            return;
+
+        }
 
         LOGGER.info("[BCN] Starting version check...");
 
