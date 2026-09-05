@@ -7,6 +7,8 @@ public class ClientConfig {
 
     public boolean checkUpdate = true;
 
+    public boolean checkXaero = true;
+
     public HUD HUD = new HUD();
 
     public WorldMarker WorldMarker = new WorldMarker();
