@@ -1,5 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator.network;
 
+import io.github.FinNank1ng.better_coordinate_navigator.client.ClientDataSyncManager;
 import io.github.FinNank1ng.better_coordinate_navigator.data.ClientQuestCache;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 import net.minecraft.network.FriendlyByteBuf;
@@ -113,6 +114,8 @@ public class QuestDataUpdatePacket {
             ClientQuestCache.setTrackedMarkers(
                     msg.trackedMarkers
             );
+
+            ClientDataSyncManager.refreshAll();
 
             LOGGER.debug(
                     "[BCN] Cache Updated: "

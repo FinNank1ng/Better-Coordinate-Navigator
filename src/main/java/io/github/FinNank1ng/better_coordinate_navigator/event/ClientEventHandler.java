@@ -1,5 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator.event;
 
+import io.github.FinNank1ng.better_coordinate_navigator.compat.xaero.XaeroWorldMapCheckHandler;
 import io.github.FinNank1ng.better_coordinate_navigator.util.VersionCheckHandler;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
@@ -26,5 +27,7 @@ public final class ClientEventHandler {
         LOGGER.info("[BCN] Client logging in detected.");
 
         VersionCheckHandler.checkForUpdate();
+
+        XaeroWorldMapCheckHandler.check();
     }
 }
