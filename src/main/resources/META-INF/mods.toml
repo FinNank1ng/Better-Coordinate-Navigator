@@ -70,3 +70,6 @@ side = "BOTH"
 #versionRange="[24.7.1,)"
 #ordering="AFTER"
 #side="BOTH"
+
+## Xaero上绘制所需要的mixin
+mixinConfigs="better_coordinate_navigator.mixins.json"

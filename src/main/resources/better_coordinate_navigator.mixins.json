@@ -1,12 +1,13 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "io.github.FinNank1ng.better_coordinate_navigator.mixin",
-  "compatibilityLevel": "JAVA_8",
-  "refmap": "better_coordinate_navigator.refmap.json",
+  "package": "io.github.FinNank1ng.better_coordinate_navigator.mixin.client",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "better_coordinate_navigator.mixins.refmap.json",
   "mixins": [
   ],
   "client": [
+    "GuiMapMixin"
   ],
   "injectors": {
     "defaultRequire": 1

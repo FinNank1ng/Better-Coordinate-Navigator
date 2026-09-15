@@ -7,7 +7,7 @@ import java.util.Arrays;
 public class JarClassScanner {
 
     private static final String[] TARGET_CLASSES = {
-            "xaero.map.element.render.ElementReader",
+            "xaero.map.gui.GuiMap",
 //            "xaero.common.IXaeroMinimap",
 //            "xaero.common.XaeroMinimapSession",
 //
@@ -233,4 +233,11 @@ public class JarClassScanner {
  * └── getTooltip(Object, Object, boolean)
  *       ↓
  *       Tooltip
+ */
+
+
+/**
+ * GuiMap 自己就有完整的 init()
+ * Xaero 的按钮全部是 Minecraft 原生 Button
+ * GuiMap 本身已经公开继承了 Screen 的 addRenderableWidget()
  */

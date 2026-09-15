@@ -87,6 +87,14 @@ dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
+mixin {
+    add sourceSets.main, "better_coordinate_navigator.mixins.refmap.json"
+    config "better_coordinate_navigator.mixins.json"
+
+    debug.verbose = true
+    debug.export = true
+}
+
 tasks.named('processResources', ProcessResources).configure {
 
     var replaceProperties = [
