@@ -7,8 +7,10 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
+import io.github.FinNank1ng.better_coordinate_navigator.network.OpenBCNMainScreenPacket;
 import io.github.FinNank1ng.better_coordinate_navigator.network.QuestSyncHelper;
-
+import io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets;
+import net.minecraftforge.network.PacketDistributor;
 import io.github.FinNank1ng.better_coordinate_navigator.util.ModVersion;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -20,6 +22,8 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Collection;
 
+import static io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets.CHANNEL;
+
 public class ModCommands {
 
     public static final String VERSION = "${file.jarVersion}";
@@ -28,7 +32,9 @@ public class ModCommands {
 
         dispatcher.register(
                 Commands.literal("bcn")
+                        .executes(ModCommands::openMainScreen)
 
+                        //help
                         .then(Commands.literal("help")
                                 .executes(ModCommands::showHelp))
                         // list
@@ -276,6 +282,21 @@ public class ModCommands {
 
         return 1;
     }
+
+    private static int openMainScreen(CommandContext<CommandSourceStack> context
+
+    ) throws CommandSyntaxException {
+
+        ServerPlayer player = context.getSource().getPlayerOrException();
+
+        ModPackets.CHANNEL.send(
+                PacketDistributor.PLAYER.with(() -> player),
+                new OpenBCNMainScreenPacket()
+        );
+
+        return 1;
+    }
+
     // 创建标点逻辑
     private static int createMarker(CommandContext<CommandSourceStack> context) {
 

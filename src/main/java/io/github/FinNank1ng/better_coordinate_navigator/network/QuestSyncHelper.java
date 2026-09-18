@@ -26,13 +26,10 @@ public class QuestSyncHelper {
                 ),
 
                 new QuestDataUpdatePacket(
-
-                        new ArrayList<>(manager.getMarkers()),
-
-                        manager.getPlayerTrackedMarkers(
+                        manager.getMarkers(),
+                        manager.getPlayerTrackedMarkerNames(
                                 player.getUUID()
                         )
-
                 )
         );
     }

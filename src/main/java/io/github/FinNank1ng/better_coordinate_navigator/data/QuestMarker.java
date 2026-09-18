@@ -3,11 +3,15 @@ package io.github.FinNank1ng.better_coordinate_navigator.data;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 
+import java.util.UUID;
+
 public class QuestMarker {
 
     /*
      * 基础信息
      */
+    private final UUID id;
+
     public double x;
     public double y;
     public double z;
@@ -67,6 +71,9 @@ public class QuestMarker {
      */
     public String state;
 
+    /*
+     * 扩展数据
+     */
     public String extraData;
 
     public QuestMarker(
@@ -76,12 +83,43 @@ public class QuestMarker {
             String name
     ) {
 
+        this(
+                UUID.randomUUID(),
+                x,
+                y,
+                z,
+                name
+        );
+    }
+
+
+    private QuestMarker(
+            UUID id,
+            double x,
+            double y,
+            double z,
+            String name
+    ) {
+
+        if (id == null) {
+            throw new IllegalArgumentException(
+                    "QuestMarker id 不能为 null"
+            );
+        }
+
+        if (name == null) {
+            throw new IllegalArgumentException(
+                    "QuestMarker name 不能为 null"
+            );
+        }
+
+        this.id = id;
+
         this.x = x;
         this.y = y;
         this.z = z;
 
         this.name = name;
-
 
         /*
          * 默认值
@@ -107,10 +145,21 @@ public class QuestMarker {
         this.extraData = "";
     }
 
+
+    /*
+     * 获取标点 UUID
+     */
+    public UUID getId() {
+        return id;
+    }
+
+
     /*
      * 网络包读取
      */
     public QuestMarker(FriendlyByteBuf buf) {
+
+        this.id = buf.readUUID();
 
         x = buf.readDouble();
         y = buf.readDouble();
@@ -138,14 +187,18 @@ public class QuestMarker {
 
         extraData = buf.readUtf();
 
+        /*
+         * tracked 不参与网络同步
+         */
         tracked = false;
-
     }
 
     /*
      * 网络包写入
      */
     public void encode(FriendlyByteBuf buf) {
+
+        buf.writeUUID(id);
 
         buf.writeDouble(x);
         buf.writeDouble(y);
@@ -179,20 +232,58 @@ public class QuestMarker {
      */
     public CompoundTag save(CompoundTag tag) {
 
+        /*
+         * UUID
+         */
+        tag.putUUID(
+                "id",
+                id
+        );
+
+        /*
+         * 坐标
+         */
         tag.putDouble("x", x);
         tag.putDouble("y", y);
         tag.putDouble("z", z);
 
-        tag.putString("name", name);
+        /*
+         * 基础信息
+         */
+        tag.putString(
+                "name",
+                name
+        );
 
-        tag.putString("description", description);
+        tag.putString(
+                "description",
+                description
+        );
 
-        tag.putBoolean("active", active);
+        /*
+         * 启用状态
+         */
+        tag.putBoolean(
+                "active",
+                active
+        );
 
-        tag.putString("iconType", iconType);
+        /*
+         * 图标
+         */
+        tag.putString(
+                "iconType",
+                iconType
+        );
 
-        tag.putString("iconName", iconName);
+        tag.putString(
+                "iconName",
+                iconName
+        );
 
+        /*
+         * 显示设置
+         */
         tag.putDouble(
                 "visibleDistance",
                 visibleDistance
@@ -213,16 +304,25 @@ public class QuestMarker {
                 showWorldMarker
         );
 
+        /*
+         * 旧版 tracked
+         */
         tag.putBoolean(
                 "tracked",
                 tracked
         );
 
+        /*
+         * 任务状态
+         */
         tag.putString(
                 "state",
                 state
         );
 
+        /*
+         * 扩展数据
+         */
         tag.putString(
                 "extraData",
                 extraData
@@ -238,66 +338,112 @@ public class QuestMarker {
             CompoundTag tag
     ) {
 
+        UUID id =
+                tag.hasUUID("id")
+                        ? tag.getUUID("id")
+                        : UUID.randomUUID();
+
         QuestMarker marker =
                 new QuestMarker(
+                        id,
                         tag.getDouble("x"),
                         tag.getDouble("y"),
                         tag.getDouble("z"),
                         tag.getString("name")
                 );
 
+        /*
+         * 基础信息
+         */
         marker.description =
                 tag.getString("description");
 
+        /*
+         * active
+         */
         marker.active =
-                tag.getBoolean("active");
+                tag.contains("active")
+                        ? tag.getBoolean("active")
+                        : true;
 
+        /*
+         * 图标
+         */
         marker.iconType =
-                tag.getString("iconType");
+                tag.contains("iconType")
+                        ? tag.getString("iconType")
+                        : "DEFAULT";
 
         marker.iconName =
-                tag.getString("iconName");
+                tag.contains("iconName")
+                        ? tag.getString("iconName")
+                        : "";
 
+        /*
+         * 显示距离
+         */
         marker.visibleDistance =
                 tag.contains("visibleDistance")
-                        ? tag.getDouble(
-                        "visibleDistance"
-                )
+                        ? tag.getDouble("visibleDistance")
                         : 256.0D;
 
+        /*
+         * 显示名字
+         */
         marker.showName =
                 !tag.contains("showName")
-                        || tag.getBoolean(
-                        "showName"
-                );
+                        || tag.getBoolean("showName");
 
+        /*
+         * 导航图标
+         */
         marker.showNavigator =
                 !tag.contains("showNavigator")
-                        || tag.getBoolean(
-                        "showNavigator"
-                );
+                        || tag.getBoolean("showNavigator");
 
+        /*
+         * 世界实体图标
+         */
         marker.showWorldMarker =
                 !tag.contains("showWorldMarker")
-                        || tag.getBoolean(
-                        "showWorldMarker"
-                );
+                        || tag.getBoolean("showWorldMarker");
 
+        /*
+         * tracked
+         */
         marker.tracked =
                 tag.contains("tracked")
-                        && tag.getBoolean(
-                        "tracked"
-                );
+                        && tag.getBoolean("tracked");
 
+        /*
+         * 状态
+         */
         marker.state =
                 tag.contains("state")
                         ? tag.getString("state")
                         : "ACTIVE";
 
+        /*
+         * 扩展数据
+         */
         marker.extraData =
                 tag.getString("extraData");
 
         return marker;
     }
 
+
+    @Override
+    public String toString() {
+
+        return "QuestMarker{"
+                + "id=" + id
+                + ", x=" + x
+                + ", y=" + y
+                + ", z=" + z
+                + ", name='" + name + '\''
+                + ", active=" + active
+                + ", state='" + state + '\''
+                + '}';
+    }
 }

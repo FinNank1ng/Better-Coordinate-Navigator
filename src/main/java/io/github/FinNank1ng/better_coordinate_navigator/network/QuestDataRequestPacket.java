@@ -54,7 +54,7 @@ public class QuestDataRequestPacket {
                     PacketDistributor.PLAYER.with(() -> player),
                     new QuestDataUpdatePacket(
                             manager.getMarkers(),
-                            manager.getPlayerTrackedMarkers(
+                            manager.getPlayerTrackedMarkerNames(
                                     player.getUUID()
                             )
                     )

@@ -55,8 +55,6 @@ public class QuestMarkerWorldRenderer {
 
         }
 
-
-
         if (event.getStage()
                 != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
 
@@ -79,7 +77,7 @@ public class QuestMarkerWorldRenderer {
             /*
              * 追踪
              */
-            if (!ClientQuestCache.isTracked(marker.name)) {
+            if (!ClientQuestCache.isTracked(marker.getId())) {
 
                 continue;
 

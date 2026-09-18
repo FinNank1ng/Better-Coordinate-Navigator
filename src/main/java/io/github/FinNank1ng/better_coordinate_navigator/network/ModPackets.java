@@ -39,5 +39,13 @@ public class ModPackets {
                 QuestDataUpdatePacket::new,
                 QuestDataUpdatePacket::handle
         );
+
+        CHANNEL.registerMessage(
+                id++,
+                OpenBCNMainScreenPacket.class,
+                OpenBCNMainScreenPacket::encode,
+                OpenBCNMainScreenPacket::new,
+                OpenBCNMainScreenPacket::handle
+        );
     }
 }
