@@ -1,7 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator.client.gui;
 
-import io.github.FinNank1ng.better_coordinate_navigator.client.gui.WorkflowScreen;
-
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
