@@ -334,8 +334,6 @@ HUD 与世界标记拥有独立的显示配置，可以控制：
 
 ![Workflow Runtime](https://github.com/user-attachments/assets/6f406473-7317-4d13-b446-e7bd542ece86)
 
-![Workflow Runtime in Game](https://github.com/user-attachments/assets/9defeb89-67d2-48a1-8483-001c703758cf)
-
 Workflow 可以在实际游戏环境中根据任务点触发并执行对应 Action。
 
 ---
