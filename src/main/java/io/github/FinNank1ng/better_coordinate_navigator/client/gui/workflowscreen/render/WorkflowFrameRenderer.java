@@ -1,6 +1,7 @@
 package io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render;
 
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreenState;
+import io.github.FinNank1ng.better_coordinate_navigator.data.ClientWorkflowPermission;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.Workflow;
 
 import net.minecraft.client.gui.Font;
@@ -8,9 +9,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 /*
- * 工作流固定界面渲染器
+ * 工作流界面框架渲染器
  */
-public class WorkflowFixedUIRenderer {
+public class WorkflowFrameRenderer {
 
     private static final int COLOR_HEADER = 0xFF101720;
     private static final int COLOR_PANEL = 0xFF141C26;
@@ -26,15 +27,24 @@ public class WorkflowFixedUIRenderer {
     private static final int COLOR_TEXT_MUTED = 0xFF6E7C8B;
     private static final int COLOR_SUCCESS = 0xFF72D69A;
 
-    private static final int HEADER_HEIGHT = 52;
+    private static final int COLOR_DISABLED = 0xFF4E5A66;
+    private static final int COLOR_DISABLED_TEXT = 0xFF687582;
+
+    private static final int HEADER_HEIGHT = 42;
     private static final int FOOTER_HEIGHT = 34;
 
     private static final int SIDEBAR_EXPANDED_WIDTH = 158;
 
+    private static final int HEADER_SIDE_PADDING = 18;
+    private static final int HEADER_BUTTON_WIDTH = 54;
+    private static final int HEADER_BUTTON_HEIGHT = 20;
+
+    private static final int TOOLBAR_TOP_OFFSET = 12;
+
     private final WorkflowScreenState state;
     private final Font font;
 
-    public WorkflowFixedUIRenderer(
+    public WorkflowFrameRenderer(
             WorkflowScreenState state,
             Font font
     ) {
@@ -44,7 +54,7 @@ public class WorkflowFixedUIRenderer {
     }
 
     /*
-     * 绘制整个固定 UI
+     * 绘制整个工作流界面框架
      */
     public void render(
             GuiGraphics graphics,
@@ -102,11 +112,17 @@ public class WorkflowFixedUIRenderer {
                 COLOR_BORDER
         );
 
+        /*
+         * 标题文字统一垂直居中
+         */
+        int headerTextY =
+                (HEADER_HEIGHT - font.lineHeight) / 2;
+
         graphics.drawString(
                 font,
                 Component.literal("BCN"),
                 18,
-                16,
+                headerTextY,
                 COLOR_TEXT
         );
 
@@ -114,7 +130,7 @@ public class WorkflowFixedUIRenderer {
                 font,
                 Component.literal("/"),
                 48,
-                16,
+                headerTextY,
                 COLOR_TEXT_MUTED
         );
 
@@ -122,7 +138,7 @@ public class WorkflowFixedUIRenderer {
                 font,
                 Component.literal("工作流"),
                 64,
-                16,
+                headerTextY,
                 COLOR_ACCENT
         );
 
@@ -130,7 +146,7 @@ public class WorkflowFixedUIRenderer {
                 font,
                 Component.literal("·"),
                 116,
-                17,
+                headerTextY,
                 COLOR_TEXT_MUTED
         );
 
@@ -155,38 +171,54 @@ public class WorkflowFixedUIRenderer {
                         workflowName
                 ),
                 134,
-                16,
+                headerTextY,
                 COLOR_TEXT_SECONDARY
         );
 
         int testX =
-                screenWidth - 155;
+                screenWidth
+                        - 155;
 
         int saveX =
-                screenWidth - 82;
+                screenWidth
+                        - 82;
+
+        int headerButtonY =
+                (HEADER_HEIGHT
+                        - HEADER_BUTTON_HEIGHT)
+                        / 2;
+
+        boolean canManage =
+                canManageWorkflows();
 
         drawHeaderControl(
                 graphics,
                 testX,
-                14,
-                54,
-                20,
+                headerButtonY,
+                HEADER_BUTTON_WIDTH,
+                HEADER_BUTTON_HEIGHT,
                 "测试",
-                COLOR_ACCENT,
+                canManage
+                        ? COLOR_ACCENT
+                        : COLOR_DISABLED,
                 mouseX,
-                mouseY
+                mouseY,
+                canManage
         );
 
         drawHeaderControl(
                 graphics,
                 saveX,
-                14,
-                54,
-                20,
+                headerButtonY,
+                HEADER_BUTTON_WIDTH,
+                HEADER_BUTTON_HEIGHT,
                 "保存",
-                COLOR_SUCCESS,
+                canManage
+                        ? COLOR_SUCCESS
+                        : COLOR_DISABLED,
                 mouseX,
-                mouseY
+                mouseY,
+                canManage
         );
     }
 
@@ -206,7 +238,10 @@ public class WorkflowFixedUIRenderer {
 
         int y =
                 HEADER_HEIGHT
-                        + 12;
+                        + TOOLBAR_TOP_OFFSET;
+
+        boolean canManage =
+                canManageWorkflows();
 
         drawPanelButton(
                 graphics,
@@ -215,7 +250,8 @@ public class WorkflowFixedUIRenderer {
                 44,
                 20,
                 "+",
-                inside(
+                canManage
+                        && inside(
                         mouseX,
                         mouseY,
                         x,
@@ -223,7 +259,8 @@ public class WorkflowFixedUIRenderer {
                         44,
                         20
                 ),
-                COLOR_ACCENT
+                COLOR_ACCENT,
+                canManage
         );
 
         drawPanelButton(
@@ -241,7 +278,8 @@ public class WorkflowFixedUIRenderer {
                         52,
                         22
                 ),
-                COLOR_TEXT
+                COLOR_TEXT,
+                true
         );
     }
 
@@ -341,7 +379,8 @@ public class WorkflowFixedUIRenderer {
             String text,
             int accent,
             int mouseX,
-            int mouseY
+            int mouseY,
+            boolean enabled
     ) {
 
         drawPanelButton(
@@ -351,7 +390,8 @@ public class WorkflowFixedUIRenderer {
                 width,
                 height,
                 text,
-                inside(
+                enabled
+                        && inside(
                         mouseX,
                         mouseY,
                         x,
@@ -359,7 +399,8 @@ public class WorkflowFixedUIRenderer {
                         width,
                         height
                 ),
-                accent
+                accent,
+                enabled
         );
     }
 
@@ -374,16 +415,21 @@ public class WorkflowFixedUIRenderer {
             int height,
             String text,
             boolean hovered,
-            int accent
+            int accent,
+            boolean enabled
     ) {
 
         int fill =
-                hovered
+                !enabled
+                        ? COLOR_PANEL
+                        : hovered
                         ? COLOR_NODE_HOVER
                         : COLOR_PANEL_ALT;
 
         int border =
-                hovered
+                !enabled
+                        ? COLOR_DISABLED
+                        : hovered
                         ? accent
                         : COLOR_BORDER;
 
@@ -435,7 +481,9 @@ public class WorkflowFixedUIRenderer {
                 Component.literal(text),
                 x + (width - textWidth) / 2,
                 y + (height - 8) / 2,
-                hovered
+                !enabled
+                        ? COLOR_DISABLED_TEXT
+                        : hovered
                         ? accent
                         : COLOR_TEXT
         );
@@ -457,5 +505,10 @@ public class WorkflowFixedUIRenderer {
                 && mouseX <= x + width
                 && mouseY >= y
                 && mouseY <= y + height;
+    }
+
+    private boolean canManageWorkflows() {
+
+        return ClientWorkflowPermission.canManage();
     }
 }

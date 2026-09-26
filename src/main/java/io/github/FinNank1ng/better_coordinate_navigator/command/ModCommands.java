@@ -10,8 +10,8 @@ import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 import io.github.FinNank1ng.better_coordinate_navigator.network.OpenBCNMainScreenPacket;
 import io.github.FinNank1ng.better_coordinate_navigator.network.QuestSyncHelper;
 import io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets;
+
 import net.minecraftforge.network.PacketDistributor;
-import io.github.FinNank1ng.better_coordinate_navigator.util.ModVersion;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -21,8 +21,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Collection;
-
-import static io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets.CHANNEL;
 
 public class ModCommands {
 
@@ -34,9 +32,9 @@ public class ModCommands {
                 Commands.literal("bcn")
                         .executes(ModCommands::openMainScreen)
 
-                        //help
-                        .then(Commands.literal("help")
-                                .executes(ModCommands::showHelp))
+                        .then(
+                                ModHelpCommands.create()
+                        )
                         // list
                         .then(Commands.literal("list")
                                 .executes(ModCommands::listMarkers))
@@ -132,10 +130,10 @@ public class ModCommands {
 
                                         // 清除图标
                                         .then(Commands.literal("clear").then(
-                                                Commands.argument("name", StringArgumentType.string())
-                                                        .executes(
-                                                                ModCommands::clearMarkerIcon
-                                                        )
+                                                        Commands.argument("name", StringArgumentType.string())
+                                                                .executes(
+                                                                        ModCommands::clearMarkerIcon
+                                                                )
                                                 )
                                         )
                                 )
@@ -146,76 +144,16 @@ public class ModCommands {
                                         )
                                 )
                         )
+
+                        .then(
+                                ModWorkflowCommands.create()
+                        )
+
         );
     }
 
     private static QuestManager getManager(CommandContext<CommandSourceStack> context) {
         return QuestManager.get(context.getSource().getLevel());
-    }
-
-    private static int showHelp(CommandContext<CommandSourceStack> context) {
-
-        context.getSource().sendSuccess(
-                () -> Component.literal("""
-                §6§l========== Better Coordinate Navigator ==========
-                
-                §7作者: §f星丶白羽莲 §8(FinNank1ng / ShirohaRen)
-                §7版本: §e%s
-                
-                §e[任务点管理]
-                
-                §a/bcn list
-                §7查看所有任务点
-                
-                §a/bcn marker create <pos> <name>
-                §7创建任务点
-                
-                §a/bcn marker remove <name>
-                §7删除任务点
-                
-                §a/bcn marker rename <old> <new>
-                §7重命名任务点
-                
-                §a/bcn marker info <name>
-                §7查看任务点详细信息
-                
-                §e[自定义图标]
-                
-                §a/bcn marker icon set <name> <icon>
-                §7设置任务点自定义图标
-                
-                §a/bcn marker icon clear <name>
-                §7清除任务点自定义图标
-                
-                §7图标文件位置:
-                §f.minecraft/better_coordinate_navigator/Picture/
-                
-                §b[任务追踪]
-                
-                §a/bcn marker track <name>
-                §7开始追踪任务点
-                
-                §a/bcn marker track player <player> <name>
-                §7由管理员对指定玩家设置追踪任务点(ADMIN)
-                
-                §a/bcn marker untrack <name>
-                §7取消指定任务点追踪
-                
-                §a/bcn marker untrack player <player> <name>
-                §7由管理员对指定玩家取消追踪任务点(ADMIN)
-                
-                §a/bcn marker cleartrack
-                §7取消全部任务追踪
-                
-                §e<name>尽量以"<name>"操作，实现带空格或非英文字符
-                §8------------------------------------
-                """.formatted(
-                        ModVersion.getVersion()
-                )),
-                false
-        );
-
-        return 1;
     }
 
     // 列表标点逻辑
@@ -405,7 +343,6 @@ public class ModCommands {
                 context.getSource()
                         .getPlayerOrException();
 
-
         String name =
                 StringArgumentType.getString(
                         context,
@@ -414,7 +351,6 @@ public class ModCommands {
 
         QuestManager manager =
                 getManager(context);
-
 
         boolean success =
                 manager.trackPlayerMarker(
@@ -432,7 +368,6 @@ public class ModCommands {
 
             return 0;
         }
-
 
         QuestSyncHelper.syncToPlayer(
                 player,
@@ -454,11 +389,9 @@ public class ModCommands {
             CommandContext<CommandSourceStack> context
     ) throws CommandSyntaxException {
 
-
         ServerPlayer player =
                 context.getSource()
                         .getPlayerOrException();
-
 
         String name =
                 StringArgumentType.getString(
@@ -469,13 +402,10 @@ public class ModCommands {
         QuestManager manager =
                 getManager(context);
 
-
-
         if(!manager.untrackPlayerMarker(
                 player.getUUID(),
                 name
         )){
-
 
             context.getSource().sendFailure(
                     Component.literal(
@@ -486,13 +416,10 @@ public class ModCommands {
             return 0;
         }
 
-
-
         QuestSyncHelper.syncToPlayer(
                 player,
                 manager
         );
-
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
@@ -523,7 +450,6 @@ public class ModCommands {
                 player.getUUID()
         );
 
-
         QuestSyncHelper.syncToPlayer(
                 player,
                 manager
@@ -539,7 +465,6 @@ public class ModCommands {
         return 1;
     }
 
-
     private static int trackPlayerMarker(CommandContext<CommandSourceStack> context)
             throws CommandSyntaxException {
 
@@ -552,7 +477,6 @@ public class ModCommands {
                 .map(player -> player.getName().getString())
                 .reduce((a,b)->a+", "+b)
                 .orElse("");
-
 
         String name = StringArgumentType.getString(
                 context,
@@ -588,7 +512,6 @@ public class ModCommands {
 
         }
 
-
         context.getSource().sendSuccess(
                 () -> Component.literal(
                         "§a 已设置玩家 §d[" + playerNames + "] §a追踪: §b[" + name + "]"
@@ -596,25 +519,21 @@ public class ModCommands {
                 true
         );
 
-
         return 1;
     }
 
     private static int untrackPlayerMarker(CommandContext<CommandSourceStack> context
     ) throws CommandSyntaxException {
 
-
         Collection<ServerPlayer> players = EntityArgument.getPlayers(
                 context,
                 "player"
         );
 
-
         String playerNames = players.stream()
                 .map(player -> player.getName().getString())
                 .reduce((a,b)->a+", "+b)
                 .orElse("");
-
 
         String name = StringArgumentType.getString(
                 context,
@@ -643,7 +562,6 @@ public class ModCommands {
                     name
             );
 
-
             QuestSyncHelper.syncToPlayer(
                     player,
                     manager
@@ -651,14 +569,12 @@ public class ModCommands {
 
         }
 
-
         context.getSource().sendSuccess(
                 () -> Component.literal(
                         "§6 已取消玩家 §d[" + playerNames + "] §6追踪: §b [" + name + "]"
                 ),
                 true
         );
-
 
         return 1;
     }
@@ -684,7 +600,6 @@ public class ModCommands {
 
         QuestMarker marker = manager.getMarker(name);
 
-
         if(marker == null){
 
             context.getSource().sendFailure(
@@ -697,20 +612,14 @@ public class ModCommands {
             return 0;
         }
 
-
         marker.iconName = icon;
 
-
         manager.setDirty();
-
-
 
         QuestSyncHelper.syncToPlayer(
                 player,
                 manager
         );
-
-
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
@@ -737,7 +646,6 @@ public class ModCommands {
 
         QuestMarker marker =
                 manager.getMarker(name);
-
 
         if(marker == null){
 
@@ -802,7 +710,6 @@ public class ModCommands {
          * 当前玩家追踪状态
          */
         boolean tracked = false;
-
 
         if(context.getSource().getEntity() instanceof ServerPlayer player){
 

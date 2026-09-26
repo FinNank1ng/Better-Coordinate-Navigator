@@ -39,7 +39,7 @@ public class WorkflowCanvasRenderer {
     private static final int HEADER_HEIGHT = 52;
     private static final int FOOTER_HEIGHT = 34;
     private static final int NODE_WIDTH = 230;
-    private static final int NODE_HEIGHT = 150;
+    private static final int NODE_HEIGHT = 130;
 
     private final WorkflowScreenState state;
 
@@ -808,7 +808,7 @@ public class WorkflowCanvasRenderer {
                             compact
                                     ? 30
                                     : Math.max(
-                                    34,
+                                    32,
                                     (int) (
                                             42 * state.getZoom()
                                     )
@@ -899,14 +899,14 @@ public class WorkflowCanvasRenderer {
                         y
                                 + (
                                 int) (
-                                53 * state.getZoom()
+                                50 * state.getZoom()
                         );
 
                 int targetNameY =
                         y
                                 + (
                                 int) (
-                                73 * state.getZoom()
+                                70 * state.getZoom()
                         );
 
                 drawNodeText(
@@ -944,7 +944,7 @@ public class WorkflowCanvasRenderer {
                         y
                                 + (
                                 int) (
-                                98 * state.getZoom()
+                                90 * state.getZoom()
                         );
 
                 drawNodeText(
@@ -984,7 +984,7 @@ public class WorkflowCanvasRenderer {
                         y
                                 + (
                                 int) (
-                                121 * state.getZoom()
+                                110 * state.getZoom()
                         );
 
                 drawNodeText(
@@ -1008,7 +1008,7 @@ public class WorkflowCanvasRenderer {
                             y
                                     + (
                                     int) (
-                                    136 * state.getZoom()
+                                    120 * state.getZoom()
                             );
 
                     int actionBoxWidth =
@@ -1017,9 +1017,9 @@ public class WorkflowCanvasRenderer {
 
                     int actionBoxHeight =
                             Math.max(
-                                    20,
+                                    18,
                                     (int) (
-                                            32 * state.getZoom()
+                                            24 * state.getZoom()
                                     )
                             );
 

@@ -190,6 +190,31 @@ public class WorkflowStep {
     }
 
 
+    /*
+     * 替换指定位置的 Action
+     */
+    public void setAction(
+            int index,
+            WorkflowAction action
+    ) {
+
+        if (action == null) {
+            return;
+        }
+
+        if (index < 0
+                || index >= actions.size()) {
+
+            return;
+        }
+
+        actions.set(
+                index,
+                action
+        );
+    }
+
+
     public int getActionCount() {
         return actions.size();
     }

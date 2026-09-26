@@ -1,9 +1,15 @@
 package io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen;
 
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowFrameLayout;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreenState.NodePosition;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowFrameLayout;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowNodeActionEditorLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.Workflow;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.WorkflowAction;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.WorkflowStep;
+
+import net.minecraft.client.gui.screens.Screen;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -15,30 +21,16 @@ public class WorkflowScreenInputHandler {
     private static final int NODE_MENU_WIDTH = 150;
     private static final int NODE_MENU_HEIGHT = 132;
 
-    private static final int ACTION_POPUP_WIDTH = 520;
-    private static final int ACTION_POPUP_HEIGHT = 360;
-
     private static final int MARKER_POPUP_WIDTH = 620;
     private static final int MARKER_POPUP_HEIGHT = 520;
 
     private static final int RENAME_POPUP_WIDTH = 380;
     private static final int RENAME_POPUP_HEIGHT = 150;
 
-    private static final int HEADER_HEIGHT = 52;
-    private static final int FOOTER_HEIGHT = 34;
-
-    private static final int SIDEBAR_EXPANDED_WIDTH = 158;
-    private static final int SIDEBAR_COLLAPSED_WIDTH = 42;
-
-    private static final int WORKFLOW_ITEM_HEIGHT = 52;
-
     private static final int WORKFLOW_MENU_WIDTH = 128;
-    private static final int WORKFLOW_MENU_HEIGHT = 72;
 
     private static final double MIN_ZOOM = 0.45D;
     private static final double MAX_ZOOM = 1.80D;
-
-    private static final int COLOR_WARNING = 0xFFFFC66D;
 
     @FunctionalInterface
     public interface MouseClickHandler {
@@ -187,6 +179,9 @@ public class WorkflowScreenInputHandler {
 
     private final ActionHandler addActionHandler;
     private final Runnable closeActionPickerHandler;
+    private final Runnable applyActionEditorHandler;
+    private final Runnable refreshActionEditorHandler;
+    private final Runnable deleteActionHandler;
 
     private final MarkerProvider markerProvider;
     private final MarkerReplaceHandler replaceMarkerHandler;
@@ -203,8 +198,8 @@ public class WorkflowScreenInputHandler {
     private final Runnable confirmRenameHandler;
     private final Runnable saveWorkflowHandler;
     private final Runnable deleteSelectedNodeHandler;
-    private final Runnable nodePositionChangedHandler;
     private final Runnable onCloseHandler;
+    private final Runnable nodePositionChangedHandler;
 
     private final MouseDraggedHandler superMouseDraggedHandler;
     private final MouseReleasedHandler superMouseReleasedHandler;
@@ -225,6 +220,9 @@ public class WorkflowScreenInputHandler {
 
             ActionHandler addActionHandler,
             Runnable closeActionPickerHandler,
+            Runnable applyActionEditorHandler,
+            Runnable refreshActionEditorHandler,
+            Runnable deleteActionHandler,
 
             MarkerProvider markerProvider,
             MarkerReplaceHandler replaceMarkerHandler,
@@ -241,8 +239,8 @@ public class WorkflowScreenInputHandler {
             Runnable confirmRenameHandler,
             Runnable saveWorkflowHandler,
             Runnable deleteSelectedNodeHandler,
-            Runnable nodePositionChangedHandler,
             Runnable onCloseHandler,
+            Runnable nodePositionChangedHandler,
 
             MouseClickHandler superClickHandler,
             MouseActionHandler headerClickHandler,
@@ -274,6 +272,15 @@ public class WorkflowScreenInputHandler {
 
         this.closeActionPickerHandler =
                 closeActionPickerHandler;
+
+        this.applyActionEditorHandler =
+                applyActionEditorHandler;
+
+        this.refreshActionEditorHandler =
+                refreshActionEditorHandler;
+
+        this.deleteActionHandler =
+                deleteActionHandler;
 
         this.markerProvider =
                 markerProvider;
@@ -314,11 +321,11 @@ public class WorkflowScreenInputHandler {
         this.deleteSelectedNodeHandler =
                 deleteSelectedNodeHandler;
 
-        this.nodePositionChangedHandler =
-                nodePositionChangedHandler;
-
         this.onCloseHandler =
                 onCloseHandler;
+
+        this.nodePositionChangedHandler =
+                nodePositionChangedHandler;
 
         this.superClickHandler =
                 superClickHandler;
@@ -389,7 +396,16 @@ public class WorkflowScreenInputHandler {
 
         if (state.markerPickerOpen) {
 
-            return handleMarkerPickerClick(
+            if (handleMarkerPickerClick(
+                    mouseX,
+                    mouseY,
+                    button
+            )) {
+
+                return true;
+            }
+
+            return superClickHandler.handle(
                     mouseX,
                     mouseY,
                     button
@@ -508,17 +524,11 @@ public class WorkflowScreenInputHandler {
         }
 
         int x =
-                (
-                        screenWidth
-                                - RENAME_POPUP_WIDTH
-                )
+                (screenWidth - RENAME_POPUP_WIDTH)
                         / 2;
 
         int y =
-                (
-                        screenHeight
-                                - RENAME_POPUP_HEIGHT
-                )
+                (screenHeight - RENAME_POPUP_HEIGHT)
                         / 2;
 
         if (!inside(
@@ -668,7 +678,38 @@ public class WorkflowScreenInputHandler {
     }
 
     /*
-     * Action 选择器点击
+     * 创建默认 Action
+     */
+    private WorkflowAction createAction(
+            WorkflowAction.Type type
+    ) {
+
+        return switch (type) {
+            case MESSAGE ->
+                    WorkflowAction.message("");
+
+            case EXECUTE_COMMAND ->
+                    WorkflowAction.executeCommand("");
+
+            case GIVE_ITEM ->
+                    WorkflowAction.giveItem(
+                            "",
+                            1
+                    );
+
+            case ENABLE_MARKER ->
+                    WorkflowAction.enableMarker("");
+
+            case DISABLE_MARKER ->
+                    WorkflowAction.disableMarker("");
+
+            case SOUND ->
+                    WorkflowAction.sound("");
+        };
+    }
+
+    /*
+     * Action 编辑器点击
      */
     private boolean handleActionPickerClick(
             double mouseX,
@@ -676,128 +717,226 @@ public class WorkflowScreenInputHandler {
             int button
     ) {
 
-        if (button
-                != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             return true;
         }
 
-        int x =
-                (
-                        screenWidth
-                                - ACTION_POPUP_WIDTH
-                )
-                        / 2;
+        UUID stepId =
+                state.actionPickerStepId != null
+                        ? state.actionPickerStepId
+                        : state.selectedStepId;
 
-        int y =
-                (
-                        screenHeight
-                                - ACTION_POPUP_HEIGHT
-                )
-                        / 2;
+        WorkflowStep step =
+                stepFinder.find(stepId);
 
-        if (inside(
-                mouseX,
-                mouseY,
-                x + ACTION_POPUP_WIDTH - 104,
-                y + ACTION_POPUP_HEIGHT - 38,
-                84,
-                26
-        )) {
+        WorkflowAction selectedAction =
+                null;
 
-            closeActionPickerHandler.run();
+        if (step != null) {
+            int selectedIndex =
+                    state.getSelectedActionIndex();
 
-            return true;
+            if (selectedIndex >= 0
+                    && selectedIndex < step.getActionCount()) {
+
+                selectedAction =
+                        step.getAction(selectedIndex);
+            }
         }
 
-        if (inside(
-                mouseX,
-                mouseY,
-                x + 20,
-                y + 74,
-                ACTION_POPUP_WIDTH - 40,
-                48
-        )) {
+        WorkflowNodeActionEditorLayout layout =
+                WorkflowNodeActionEditorLayout.calculate(
+                        screenWidth,
+                        screenHeight,
+                        selectedAction
+                );
 
-            addActionHandler.handle(
-                    WorkflowAction.message(
-                            "请输入消息"
-                    )
-            );
-
-            return true;
-        }
-
-        if (inside(
-                mouseX,
-                mouseY,
-                x + 20,
-                y + 132,
-                ACTION_POPUP_WIDTH - 40,
-                48
-        )) {
-
-            addActionHandler.handle(
-                    WorkflowAction.executeCommand(
-                            "say Hello"
-                    )
-            );
-
-            return true;
-        }
-
-        if (inside(
-                mouseX,
-                mouseY,
-                x + 20,
-                y + 190,
-                ACTION_POPUP_WIDTH - 40,
-                48
-        )) {
-
-            addActionHandler.handle(
-                    WorkflowAction.giveItem(
-                            "minecraft:stone",
-                            1
-                    )
-            );
-
-            return true;
-        }
-
-        if (inside(
-                mouseX,
-                mouseY,
-                x + 20,
-                y + 248,
-                ACTION_POPUP_WIDTH - 40,
-                48
-        )) {
-
-            addActionHandler.handle(
-                    WorkflowAction.sound(
-                            "minecraft:block.note_block.pling"
-                    )
-            );
-
-            return true;
-        }
+        int popupX = layout.getPopupX();
+        int popupY = layout.getPopupY();
+        int scaledWidth =
+                (int) Math.round(
+                        WorkflowNodeActionEditorLayout.POPUP_WIDTH
+                                * layout.getScale()
+                );
+        int scaledHeight =
+                (int) Math.round(
+                        WorkflowNodeActionEditorLayout.POPUP_HEIGHT
+                                * layout.getScale()
+                );
 
         if (!inside(
                 mouseX,
                 mouseY,
-                x,
-                y,
-                ACTION_POPUP_WIDTH,
-                ACTION_POPUP_HEIGHT
+                popupX,
+                popupY,
+                scaledWidth,
+                scaledHeight
         )) {
-
             closeActionPickerHandler.run();
+            return true;
+        }
 
+        int designX =
+                (int) Math.floor(
+                        (mouseX - popupX)
+                                / layout.getScale()
+                );
+
+        int designY =
+                (int) Math.floor(
+                        (mouseY - popupY)
+                                / layout.getScale()
+                );
+
+        /* 底部按钮 */
+        if (layout.deleteButton().contains(
+                designX,
+                designY
+        )) {
+            deleteActionHandler.run();
+            return true;
+        }
+
+        if (layout.cancelButton().contains(
+                designX,
+                designY
+        )) {
+            closeActionPickerHandler.run();
+            return true;
+        }
+
+        if (layout.applyButton().contains(
+                designX,
+                designY
+        )) {
+            applyActionEditorHandler.run();
+            return true;
+        }
+
+        if (step == null) {
+            closeActionPickerHandler.run();
+            return true;
+        }
+
+        /* 已添加动作列表 */
+        for (int i = 0; i < step.getActionCount(); i++) {
+
+            if (!layout.actionItemFits(i)) {
+                break;
+            }
+
+            WorkflowNodeActionEditorLayout.Rect item =
+                    layout.actionItem(i);
+
+            if (item.contains(
+                    designX,
+                    designY
+            )) {
+                state.selectedActionIndex = i;
+                state.statusText = "已选择动作";
+                refreshActionEditorHandler.run();
+                return true;
+            }
+        }
+
+        /* 添加动作类型 */
+        WorkflowAction.Type[] actionTypes = {
+                WorkflowAction.Type.MESSAGE,
+                WorkflowAction.Type.EXECUTE_COMMAND,
+                WorkflowAction.Type.GIVE_ITEM,
+                WorkflowAction.Type.SOUND
+        };
+
+        for (int i = 0; i < actionTypes.length; i++) {
+
+            WorkflowNodeActionEditorLayout.Rect buttonRect =
+                    layout.actionTypeButton(i);
+
+            if (buttonRect.contains(
+                    designX,
+                    designY
+            )) {
+                addActionHandler.handle(
+                        createAction(actionTypes[i])
+                );
+                return true;
+            }
+        }
+
+        /* 编辑区输入框 */
+        if (state.selectedActionIndex >= 0
+                && state.selectedActionIndex < step.getActionCount()
+                && handleActionEditorFieldClick(
+                mouseX,
+                mouseY,
+                designX,
+                designY,
+                step
+        )) {
             return true;
         }
 
         return true;
+    }
+
+    /*
+     * 判断是否点击 Action 编辑框。
+     */
+    private boolean handleActionEditorFieldClick(
+            double mouseX,
+            double mouseY,
+            int designX,
+            int designY,
+            WorkflowStep step
+    ) {
+
+        int index = state.selectedActionIndex;
+
+        if (step == null
+                || index < 0
+                || index >= step.getActionCount()) {
+            return false;
+        }
+
+        WorkflowAction action =
+                step.getAction(index);
+
+        if (action == null) {
+            return false;
+        }
+
+        WorkflowNodeActionEditorLayout layout =
+                WorkflowNodeActionEditorLayout.calculate(
+                        screenWidth,
+                        screenHeight,
+                        action
+                );
+
+        /* 整个视觉输入框都可以点击，包括命令左侧的 / 区域。 */
+        if (layout.getDataFrame().contains(
+                designX,
+                designY
+        )) {
+            return superClickHandler.handle(
+                    mouseX,
+                    mouseY,
+                    GLFW.GLFW_MOUSE_BUTTON_LEFT
+            );
+        }
+
+        if (layout.getCountFrame() != null
+                && layout.getCountFrame().contains(
+                designX,
+                designY
+        )) {
+            return superClickHandler.handle(
+                    mouseX,
+                    mouseY,
+                    GLFW.GLFW_MOUSE_BUTTON_LEFT
+            );
+        }
+
+        return false;
     }
 
     /*
@@ -841,6 +980,21 @@ public class WorkflowScreenInputHandler {
             closeMarkerPickerHandler.run();
 
             return true;
+        }
+
+        /*
+         * 搜索框交给原生 Widget 处理
+         */
+        if (inside(
+                mouseX,
+                mouseY,
+                x + 20,
+                y + 54,
+                MARKER_POPUP_WIDTH - 40,
+                26
+        )) {
+
+            return false;
         }
 
         if (inside(
@@ -957,24 +1111,21 @@ public class WorkflowScreenInputHandler {
         }
 
         int listTop =
-                HEADER_HEIGHT + 52;
+                WorkflowFrameLayout.workflowListTop();
 
         int itemY =
                 listTop
                         + itemIndex
-                        * WORKFLOW_ITEM_HEIGHT
+                        * WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT
                         - (int) state.sidebarScroll;
 
         int menuX =
-                SIDEBAR_EXPANDED_WIDTH
-                        - WORKFLOW_MENU_WIDTH
-                        - 8;
+                WorkflowFrameLayout.workflowMenuX();
 
         int menuY =
-                Math.max(
-                        HEADER_HEIGHT + 8,
-                        itemY
-                                + WORKFLOW_ITEM_HEIGHT
+                WorkflowFrameLayout.workflowMenuY(
+                        itemY,
+                        screenHeight
                 );
 
         if (inside(
@@ -1013,7 +1164,7 @@ public class WorkflowScreenInputHandler {
     }
 
     /*
-     * 鼠标拖动
+     * 拖动节点
      */
     public boolean handleMouseDragged(
             double mouseX,
@@ -1055,7 +1206,7 @@ public class WorkflowScreenInputHandler {
                 && button
                 == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
 
-            WorkflowScreenState.NodePosition position =
+            NodePosition position =
                     state.nodePositions.get(
                             state.draggingNodeId
                     );
@@ -1180,11 +1331,11 @@ public class WorkflowScreenInputHandler {
                 mouseX,
                 mouseY,
                 0,
-                HEADER_HEIGHT,
+                WorkflowFrameLayout.HEADER_HEIGHT,
                 getSidebarWidth(),
                 screenHeight
-                        - HEADER_HEIGHT
-                        - FOOTER_HEIGHT
+                        - WorkflowFrameLayout.HEADER_HEIGHT
+                        - WorkflowFrameLayout.FOOTER_HEIGHT
         )) {
 
             List<Workflow> visible =
@@ -1192,12 +1343,12 @@ public class WorkflowScreenInputHandler {
 
             int listHeight =
                     visible.size()
-                            * WORKFLOW_ITEM_HEIGHT;
+                            * WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT;
 
             int viewportHeight =
                     screenHeight
-                            - HEADER_HEIGHT
-                            - FOOTER_HEIGHT
+                            - WorkflowFrameLayout.HEADER_HEIGHT
+                            - WorkflowFrameLayout.FOOTER_HEIGHT
                             - 100;
 
             state.sidebarScroll =
@@ -1219,12 +1370,12 @@ public class WorkflowScreenInputHandler {
                 mouseX,
                 mouseY,
                 getSidebarWidth(),
-                HEADER_HEIGHT,
+                WorkflowFrameLayout.HEADER_HEIGHT,
                 screenWidth
                         - getSidebarWidth(),
                 screenHeight
-                        - HEADER_HEIGHT
-                        - FOOTER_HEIGHT
+                        - WorkflowFrameLayout.HEADER_HEIGHT
+                        - WorkflowFrameLayout.FOOTER_HEIGHT
         )) {
 
             double oldZoom =
@@ -1269,7 +1420,7 @@ public class WorkflowScreenInputHandler {
 
                 state.panY =
                         mouseY
-                                - HEADER_HEIGHT
+                                - WorkflowFrameLayout.HEADER_HEIGHT
                                 - worldY * state.zoom;
             }
 
@@ -1292,6 +1443,9 @@ public class WorkflowScreenInputHandler {
             int modifiers
     ) {
 
+        /*
+         * ESC 按层级关闭界面
+         */
         if (keyCode
                 == GLFW.GLFW_KEY_ESCAPE) {
 
@@ -1346,6 +1500,14 @@ public class WorkflowScreenInputHandler {
             return true;
         }
 
+        if (state.actionPickerOpen
+                && keyCode == GLFW.GLFW_KEY_DELETE) {
+
+            deleteActionHandler.run();
+
+            return true;
+        }
+
         if (!state.markerPickerOpen
                 && !state.actionPickerOpen
                 && !state.renameDialogOpen
@@ -1362,8 +1524,7 @@ public class WorkflowScreenInputHandler {
                 && !state.renameDialogOpen
                 && keyCode
                 == GLFW.GLFW_KEY_S
-                && net.minecraft.client.gui.screens.Screen
-                .hasControlDown()) {
+                && Screen.hasControlDown()) {
 
             saveWorkflowHandler.run();
 
@@ -1383,36 +1544,12 @@ public class WorkflowScreenInputHandler {
     private int getSidebarWidth() {
 
         return state.sidebarCollapsed
-                ? SIDEBAR_COLLAPSED_WIDTH
-                : SIDEBAR_EXPANDED_WIDTH;
+                ? WorkflowFrameLayout.SIDEBAR_COLLAPSED_WIDTH
+                : WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH;
     }
 
     /*
      * 世界坐标转换到屏幕坐标
-     */
-    private double worldToScreenX(
-            double worldX
-    ) {
-
-        return getSidebarWidth()
-                + state.panX
-                + worldX * state.zoom;
-    }
-
-    /*
-     * 世界坐标转换到屏幕坐标
-     */
-    private double worldToScreenY(
-            double worldY
-    ) {
-
-        return HEADER_HEIGHT
-                + state.panY
-                + worldY * state.zoom;
-    }
-
-    /*
-     * 屏幕坐标转换到世界坐标
      */
     private double screenToWorldX(
             double screenX
@@ -1434,7 +1571,7 @@ public class WorkflowScreenInputHandler {
 
         return (
                 screenY
-                        - HEADER_HEIGHT
+                        - WorkflowFrameLayout.HEADER_HEIGHT
                         - state.panY
         ) / state.zoom;
     }

@@ -1,13 +1,18 @@
 package io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen;
 
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.BCNMainScreen;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowFrameLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreenState.NodePosition;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowCanvasRenderer;
-import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowSidebarRenderer;
-import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowFixedUIRenderer;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowFrameRenderer;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowPopupRenderer;
-
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowSidebarRenderer;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowNodeActionEditorLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.data.ClientQuestCache;
+import io.github.FinNank1ng.better_coordinate_navigator.data.ClientWorkflowPermission;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
+import io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets;
+import io.github.FinNank1ng.better_coordinate_navigator.network.WorkflowSavePacket;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.Workflow;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.WorkflowAction;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.WorkflowStep;
@@ -39,14 +44,6 @@ public class WorkflowScreen extends Screen {
     private static final int COLOR_WARNING = 0xFFFFC66D;
     private static final int COLOR_DANGER = 0xFFFF7474;
 
-    private static final int HEADER_HEIGHT = 52;
-    private static final int FOOTER_HEIGHT = 34;
-
-    private static final int SIDEBAR_EXPANDED_WIDTH = 158;
-    private static final int SIDEBAR_COLLAPSED_WIDTH = 42;
-
-    private static final int WORKFLOW_ITEM_HEIGHT = 52;
-
     private static final int NODE_WIDTH = 230;
     private static final int NODE_HEIGHT = 150;
 
@@ -57,12 +54,6 @@ public class WorkflowScreen extends Screen {
 
     private static final int NODE_MENU_WIDTH = 150;
     private static final int NODE_MENU_HEIGHT = 132;
-
-    private static final int ACTION_POPUP_WIDTH = 520;
-    private static final int ACTION_POPUP_HEIGHT = 360;
-
-    private static final int MARKER_POPUP_WIDTH = 620;
-    private static final int MARKER_POPUP_HEIGHT = 520;
 
     private static final int RENAME_POPUP_WIDTH = 380;
     private static final int RENAME_POPUP_HEIGHT = 150;
@@ -75,6 +66,7 @@ public class WorkflowScreen extends Screen {
     private static final float Z_FIXED_UI = 200.0F;
     private static final float Z_MODAL = 300.0F;
     private static final float Z_WIDGET = 400.0F;
+    private static final float Z_WORKFLOW_MENU = 40.0F;
 
     private final Screen parent;
 
@@ -84,7 +76,7 @@ public class WorkflowScreen extends Screen {
             );
 
     private WorkflowSidebarRenderer sidebarRenderer;
-    private WorkflowFixedUIRenderer fixedUIRenderer;
+    private WorkflowFrameRenderer fixedUIRenderer;
     private WorkflowPopupRenderer popupRenderer;
 
     private final WorkflowScreenInputHandler inputHandler;
@@ -97,8 +89,19 @@ public class WorkflowScreen extends Screen {
     private EditBox markerSearchBox;
     private EditBox renameBox;
 
-    public WorkflowScreen(Screen parent) {
-        super(Component.literal("BCN / 工作流"));
+    private EditBox actionDataBox;
+    private EditBox actionCountBox;
+
+    public WorkflowScreen(
+            Screen parent,
+            List<Workflow> workflows
+    ) {
+
+        super(
+                Component.literal(
+                        "BCN 工作流"
+                )
+        );
 
         this.parent = parent;
 
@@ -119,9 +122,21 @@ public class WorkflowScreen extends Screen {
 
                         this::addActionToSelectedNode,
                         this::closeActionPicker,
+                        this::applyActionEditorChanges,
+                        this::syncActionEditors,
+                        this::deleteSelectedAction,
 
                         this::getFilteredMarkers,
                         (step, marker) -> {
+
+                            if (!canManageWorkflows()) {
+                                return;
+                            }
+
+                            if (step == null
+                                    || marker == null) {
+                                return;
+                            }
 
                             step.setMarkerId(
                                     marker.getId()
@@ -144,11 +159,25 @@ public class WorkflowScreen extends Screen {
                         this::confirmRename,
                         this::saveWorkflow,
                         this::deleteSelectedNode,
-                        () ->
-                                markDirty(
-                                        "节点位置已修改"
-                                ),
-                        this::onClose,
+
+                        // onCloseHandler
+                        () -> {
+
+                            minecraft.setScreen(
+                                    new BCNMainScreen()
+                            );
+                        },
+
+                        // nodePositionChangedHandler
+                        () -> {
+                            if (!canManageWorkflows()) {
+                                return;
+                            }
+
+                            markDirty(
+                                    "节点位置已修改"
+                            );
+                        },
 
                         (mouseX, mouseY, button) ->
                                 super.mouseClicked(
@@ -192,79 +221,43 @@ public class WorkflowScreen extends Screen {
                                 )
                 );
 
-        createInitialWorkflow();
+        loadWorkflows(
+                workflows
+        );
+    }
+
+    /*
+     * 判断当前玩家是否拥有工作流管理权限
+     */
+    private boolean canManageWorkflows() {
+
+        return ClientWorkflowPermission.canManage();
+    }
+
+    /*
+     * 显示没有管理权限的提示
+     */
+    private void markPermissionDenied() {
+
+        markStatus(
+                "当前玩家没有工作流管理权限",
+                COLOR_DANGER
+        );
     }
 
     /*
      * 创建初始工作流
+     *
+     * 当前工作流数据完全由服务器提供
+     * 客户端不再自行创建持久化工作流
      */
     private void createInitialWorkflow() {
 
-        Workflow workflow =
-                Workflow.create(
-                        "新手引导流程"
-                );
+        state.currentWorkflow = null;
 
-        List<QuestMarker> markers =
-                ClientQuestCache.getMarkers();
+        state.selectedWorkflowIndex = -1;
 
-        int index = 0;
-
-        for (QuestMarker marker : markers) {
-
-            if (index >= 3) {
-                break;
-            }
-
-            WorkflowStep step =
-                    WorkflowStep.create(
-                            marker.getId(),
-                            3.0D
-                    );
-
-            if (index == 0) {
-
-                step.addAction(
-                        WorkflowAction.message(
-                                "欢迎来到目标区域"
-                        )
-                );
-
-            } else {
-
-                step.addAction(
-                        WorkflowAction.executeCommand(
-                                "say 玩家已抵达目标点"
-                        )
-                );
-            }
-
-            workflow.addStep(step);
-
-            state.nodePositions.put(
-                    step.getId(),
-                    new NodePosition(
-                            140,
-                            120 + index * 190
-                    )
-            );
-
-            index++;
-        }
-
-        state.workflows.add(workflow);
-
-        state.currentWorkflow = workflow;
-
-        state.selectedWorkflowIndex = 0;
-
-        if (!workflow.isEmpty()) {
-
-            state.selectedStepId =
-                    workflow
-                            .getStep(0)
-                            .getId();
-        }
+        state.selectedStepId = null;
     }
 
     @Override
@@ -279,19 +272,61 @@ public class WorkflowScreen extends Screen {
                 );
 
         fixedUIRenderer =
-                new WorkflowFixedUIRenderer(
+                new WorkflowFrameRenderer(
                         state,
                         font
                 );
 
         popupRenderer =
                 new WorkflowPopupRenderer(
+                        state,
                         font
                 );
 
         buildEditors();
 
         updateEditorBounds();
+
+        ensureCurrentWorkflowNodePositions();
+    }
+
+    /*
+     * 加载工作流到编辑器
+     */
+    private void loadWorkflows(
+            List<Workflow> workflows
+    ) {
+
+        state.getWorkflows().clear();
+
+        state.currentWorkflow = null;
+
+        state.selectedWorkflowIndex = -1;
+
+        state.selectedStepId = null;
+
+        state.dirty = false;
+
+        if (workflows == null
+                || workflows.isEmpty()) {
+
+            createInitialWorkflow();
+
+            return;
+        }
+
+        state.getWorkflows().addAll(
+                workflows
+        );
+
+        state.currentWorkflow =
+                state.getWorkflows().get(0);
+
+        state.selectedWorkflowIndex = 0;
+
+        state.selectedStepId = null;
+
+        state.dirty = false;
 
         ensureCurrentWorkflowNodePositions();
     }
@@ -317,10 +352,20 @@ public class WorkflowScreen extends Screen {
                         )
                 );
 
-        workflowSearchBox.setMaxLength(80);
-        workflowSearchBox.setBordered(false);
+        workflowSearchBox.setMaxLength(
+                80
+        );
+
+        workflowSearchBox.setBordered(
+                false
+        );
+
         workflowSearchBox.setTextColor(
                 COLOR_TEXT
+        );
+
+        workflowSearchBox.setHint(
+                Component.literal("搜索工作流")
         );
 
         markerSearchBox =
@@ -337,8 +382,14 @@ public class WorkflowScreen extends Screen {
                         )
                 );
 
-        markerSearchBox.setMaxLength(128);
-        markerSearchBox.setBordered(false);
+        markerSearchBox.setMaxLength(
+                128
+        );
+
+        markerSearchBox.setBordered(
+                false
+        );
+
         markerSearchBox.setTextColor(
                 COLOR_TEXT
         );
@@ -359,14 +410,84 @@ public class WorkflowScreen extends Screen {
                         )
                 );
 
-        renameBox.setMaxLength(80);
-        renameBox.setBordered(false);
+        renameBox.setMaxLength(
+                80
+        );
+
+        renameBox.setBordered(
+                false
+        );
+
         renameBox.setTextColor(
                 COLOR_TEXT
         );
 
         renameBox.visible = false;
+
+        /*
+         * Action 数据输入框
+         */
+        actionDataBox =
+                addRenderableWidget(
+                        new EditBox(
+                                font,
+                                0,
+                                0,
+                                300,
+                                26,
+                                Component.literal(
+                                        "动作数据"
+                                )
+                        )
+                );
+
+        actionDataBox.setMaxLength(
+                512
+        );
+
+        actionDataBox.setBordered(
+                false
+        );
+
+        actionDataBox.setTextColor(
+                COLOR_TEXT
+        );
+
+        actionDataBox.visible = false;
+
+        /*
+         * Action 数量输入框
+         */
+        actionCountBox =
+                addRenderableWidget(
+                        new EditBox(
+                                font,
+                                0,
+                                0,
+                                90,
+                                26,
+                                Component.literal(
+                                        "数量"
+                                )
+                        )
+                );
+
+        actionCountBox.setMaxLength(
+                9
+        );
+
+        actionCountBox.setBordered(
+                false
+        );
+
+        actionCountBox.setTextColor(
+                COLOR_TEXT
+        );
+
+        actionCountBox.visible = false;
     }
+
+
 
     /*
      * 更新输入框位置
@@ -378,54 +499,34 @@ public class WorkflowScreen extends Screen {
             workflowSearchBox.setX(
                     state.sidebarCollapsed
                             ? -100
-                            : 48
+                            : WorkflowFrameLayout.SIDEBAR_SEARCH_X
+                            + WorkflowFrameLayout.SIDEBAR_SEARCH_TEXT_OFFSET
             );
 
+
             workflowSearchBox.setY(
-                    HEADER_HEIGHT + 12
+                    WorkflowFrameLayout.sidebarSearchY() + 6
             );
 
             workflowSearchBox.setWidth(
-                    Math.max(
-                            120,
-                            SIDEBAR_EXPANDED_WIDTH - 60
-                    )
+                    WorkflowFrameLayout.SIDEBAR_SEARCH_WIDTH
             );
 
             workflowSearchBox.setHeight(
-                    26
+                    WorkflowFrameLayout.SIDEBAR_SEARCH_HEIGHT
             );
 
-            workflowSearchBox.visible = !state.sidebarCollapsed;
-        }
+            workflowSearchBox.visible =
+                    !state.sidebarCollapsed
+                            && !state.workflowMenuOpen
+                            && !state.renameDialogOpen
+                            && !state.markerPickerOpen
+                            && !state.actionPickerOpen
+                            && !state.nodeMenuOpen;
 
-        if (markerSearchBox != null) {
-
-            int popupX =
-                    (width - MARKER_POPUP_WIDTH)
-                            / 2;
-
-            int popupY =
-                    (height - MARKER_POPUP_HEIGHT)
-                            / 2;
-
-            markerSearchBox.setX(
-                    popupX + 20
-            );
-
-            markerSearchBox.setY(
-                    popupY + 54
-            );
-
-            markerSearchBox.setWidth(
-                    MARKER_POPUP_WIDTH - 40
-            );
-
-            markerSearchBox.setHeight(
-                    26
-            );
-
-            markerSearchBox.visible = state.markerPickerOpen;
+            if (!workflowSearchBox.visible) {
+                workflowSearchBox.setFocused(false);
+            }
         }
 
         if (renameBox != null) {
@@ -454,9 +555,106 @@ public class WorkflowScreen extends Screen {
                     28
             );
 
-            renameBox.visible = state.renameDialogOpen;
+            renameBox.visible =
+                    state.renameDialogOpen;
         }
+
+        if (actionDataBox != null
+                && actionCountBox != null) {
+
+            WorkflowAction selectedAction = null;
+
+            if (state.actionPickerOpen) {
+                WorkflowStep step =
+                        findStepById(
+                                state.actionPickerStepId != null
+                                        ? state.actionPickerStepId
+                                        : state.selectedStepId
+                        );
+
+                int selectedIndex =
+                        state.getSelectedActionIndex();
+
+                if (step != null
+                        && selectedIndex >= 0
+                        && selectedIndex < step.getActionCount()) {
+
+                    selectedAction =
+                            step.getAction(selectedIndex);
+                }
+            }
+
+            WorkflowNodeActionEditorLayout layout =
+                    WorkflowNodeActionEditorLayout.calculate(
+                            width,
+                            height,
+                            selectedAction
+                    );
+
+            WorkflowNodeActionEditorLayout.Rect dataInput =
+                    layout.toScreen(
+                            layout.getDataInput()
+                    );
+
+            boolean showCount =
+                    state.actionPickerOpen
+                            && selectedAction != null
+                            && layout.isGiveItem();
+
+            actionDataBox.setX(
+                    dataInput.x()
+            );
+
+            actionDataBox.setY(
+                    dataInput.y()
+            );
+
+            actionDataBox.setWidth(
+                    dataInput.width()
+            );
+
+            actionDataBox.setHeight(
+                    dataInput.height()
+            );
+
+            actionDataBox.visible =
+                    state.actionPickerOpen
+                            && selectedAction != null;
+
+            WorkflowNodeActionEditorLayout.Rect countInput =
+                    layout.toScreen(
+                            layout.getCountInput()
+                    );
+
+            if (showCount && countInput != null) {
+
+                actionCountBox.setX(
+                        countInput.x()
+                );
+
+                actionCountBox.setY(
+                        countInput.y()
+                );
+
+                actionCountBox.setWidth(
+                        countInput.width()
+                );
+
+                actionCountBox.setHeight(
+                        countInput.height()
+                );
+
+                actionCountBox.visible = true;
+
+            } else {
+
+                actionCountBox.setFocused(false);
+                actionCountBox.visible = false;
+            }
+        }
+
     }
+
 
     @Override
     public void render(
@@ -629,6 +827,14 @@ public class WorkflowScreen extends Screen {
 
         if (state.workflowMenuOpen) {
 
+            graphics.pose().pushPose();
+
+            graphics.pose().translate(
+                    0.0F,
+                    0.0F,
+                    Z_WORKFLOW_MENU
+            );
+
             popupRenderer.renderWorkflowMenu(
                     graphics,
                     findWorkflow(
@@ -637,6 +843,8 @@ public class WorkflowScreen extends Screen {
                     getFilteredWorkflows(),
                     state.getSidebarScroll()
             );
+
+            graphics.pose().popPose();
         }
 
         graphics.flush();
@@ -681,9 +889,7 @@ public class WorkflowScreen extends Screen {
         graphics.flush();
 
         graphics.pose().popPose();
-
     }
-
 
     /*
      * 更新悬停节点
@@ -717,9 +923,11 @@ public class WorkflowScreen extends Screen {
                 newHoveredId
         )) {
 
-            state.hoveredNodeId = newHoveredId;
+            state.hoveredNodeId =
+                    newHoveredId;
 
-            state.hoveredNodeStartTime = System.currentTimeMillis();
+            state.hoveredNodeStartTime =
+                    System.currentTimeMillis();
         }
     }
 
@@ -737,6 +945,7 @@ public class WorkflowScreen extends Screen {
         if (System.currentTimeMillis()
                 - state.hoveredNodeStartTime
                 < NODE_TOOLTIP_DELAY) {
+
             return;
         }
 
@@ -767,13 +976,17 @@ public class WorkflowScreen extends Screen {
         int tooltipWidth = 304;
         int tooltipHeight = 92;
 
-        int canvasLeft = getSidebarWidth();
+        int canvasLeft =
+                getSidebarWidth();
 
-        int canvasTop = HEADER_HEIGHT;
+        int canvasTop =
+                WorkflowFrameLayout.HEADER_HEIGHT;
 
-        int canvasRight = width;
+        int canvasRight =
+                width;
 
-        int canvasBottom = height - FOOTER_HEIGHT;
+        int canvasBottom =
+                height - WorkflowFrameLayout.FOOTER_HEIGHT;
 
         int x =
                 (int) clamp(
@@ -794,6 +1007,7 @@ public class WorkflowScreen extends Screen {
                 );
 
         if (x + tooltipWidth > width) {
+
             x =
                     width
                             - tooltipWidth
@@ -801,6 +1015,7 @@ public class WorkflowScreen extends Screen {
         }
 
         if (y + tooltipHeight > height) {
+
             y =
                     height
                             - tooltipHeight
@@ -825,7 +1040,9 @@ public class WorkflowScreen extends Screen {
 
         graphics.drawString(
                 font,
-                Component.literal("Step UUID"),
+                Component.literal(
+                        "Step UUID"
+                ),
                 x + 10,
                 y + 10,
                 COLOR_TEXT_MUTED
@@ -833,7 +1050,9 @@ public class WorkflowScreen extends Screen {
 
         graphics.drawString(
                 font,
-                Component.literal(stepId),
+                Component.literal(
+                        stepId
+                ),
                 x + 10,
                 y + 24,
                 COLOR_TEXT_SECONDARY
@@ -841,7 +1060,9 @@ public class WorkflowScreen extends Screen {
 
         graphics.drawString(
                 font,
-                Component.literal("Marker UUID"),
+                Component.literal(
+                        "Marker UUID"
+                ),
                 x + 10,
                 y + 48,
                 COLOR_TEXT_MUTED
@@ -849,24 +1070,33 @@ public class WorkflowScreen extends Screen {
 
         graphics.drawString(
                 font,
-                Component.literal(markerId),
+                Component.literal(
+                        markerId
+                ),
                 x + 10,
                 y + 62,
                 COLOR_TEXT_SECONDARY
         );
     }
 
-
     /*
      * 打开目标标点选择器
      */
     private void openMarkerPicker() {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
 
         state.replacingMarkerStepId = null;
 
         state.markerPickerOpen = true;
 
         state.actionPickerOpen = false;
+
         state.workflowMenuOpen = false;
         state.nodeMenuOpen = false;
 
@@ -875,7 +1105,10 @@ public class WorkflowScreen extends Screen {
         updateEditorBounds();
 
         markerSearchBox.setValue("");
-        markerSearchBox.setFocused(true);
+
+        markerSearchBox.setFocused(
+                true
+        );
     }
 
     /*
@@ -884,6 +1117,13 @@ public class WorkflowScreen extends Screen {
     private void openMarkerPickerForStep(
             WorkflowStep step
     ) {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
 
         if (step == null) {
             return;
@@ -906,7 +1146,10 @@ public class WorkflowScreen extends Screen {
         updateEditorBounds();
 
         markerSearchBox.setValue("");
-        markerSearchBox.setFocused(true);
+
+        markerSearchBox.setFocused(
+                true
+        );
     }
 
     /*
@@ -920,7 +1163,10 @@ public class WorkflowScreen extends Screen {
 
         if (markerSearchBox != null) {
 
-            markerSearchBox.setFocused(false);
+            markerSearchBox.setFocused(
+                    false
+            );
+
             markerSearchBox.visible = false;
         }
 
@@ -934,6 +1180,13 @@ public class WorkflowScreen extends Screen {
             WorkflowStep step
     ) {
 
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
+
         if (step == null) {
             return;
         }
@@ -944,6 +1197,9 @@ public class WorkflowScreen extends Screen {
         state.selectedStepId =
                 step.getId();
 
+        state.selectedActionIndex =
+                -1;
+
         state.actionPickerOpen = true;
 
         state.markerPickerOpen = false;
@@ -951,6 +1207,8 @@ public class WorkflowScreen extends Screen {
         state.nodeMenuOpen = false;
 
         updateEditorBounds();
+
+        syncActionEditors();
     }
 
     /*
@@ -962,6 +1220,26 @@ public class WorkflowScreen extends Screen {
 
         state.actionPickerStepId = null;
 
+        state.selectedActionIndex = -1;
+
+        if (actionDataBox != null) {
+
+            actionDataBox.setFocused(
+                    false
+            );
+
+            actionDataBox.visible = false;
+        }
+
+        if (actionCountBox != null) {
+
+            actionCountBox.setFocused(
+                    false
+            );
+
+            actionCountBox.visible = false;
+        }
+
         updateEditorBounds();
     }
 
@@ -972,8 +1250,16 @@ public class WorkflowScreen extends Screen {
             QuestMarker marker
     ) {
 
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
+
         if (state.currentWorkflow == null
                 || marker == null) {
+
             return;
         }
 
@@ -983,7 +1269,9 @@ public class WorkflowScreen extends Screen {
                         3.0D
                 );
 
-        state.currentWorkflow.addStep(step);
+        state.currentWorkflow.addStep(
+                step
+        );
 
         int index =
                 state.currentWorkflow
@@ -1016,8 +1304,19 @@ public class WorkflowScreen extends Screen {
             WorkflowAction action
     ) {
 
-        if (action == null) {
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
             closeActionPicker();
+
+            return;
+        }
+
+        if (action == null) {
+
+            closeActionPicker();
+
             return;
         }
 
@@ -1027,21 +1326,29 @@ public class WorkflowScreen extends Screen {
                 );
 
         if (step == null) {
+
             closeActionPicker();
+
             return;
         }
 
-        step.addAction(action);
+        step.addAction(
+                action
+        );
 
         state.selectedStepId =
                 step.getId();
+
+        state.selectedActionIndex =
+                step.getActionCount() - 1;
 
         markDirty(
                 "已添加动作"
         );
 
-        closeActionPicker();
+        syncActionEditors();
     }
+
 
     /*
      * 复制节点
@@ -1050,8 +1357,16 @@ public class WorkflowScreen extends Screen {
             WorkflowStep source
     ) {
 
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
+
         if (state.currentWorkflow == null
                 || source == null) {
+
             return;
         }
 
@@ -1069,7 +1384,9 @@ public class WorkflowScreen extends Screen {
             );
         }
 
-        state.currentWorkflow.addStep(copy);
+        state.currentWorkflow.addStep(
+                copy
+        );
 
         NodePosition sourcePosition =
                 state.nodePositions.get(
@@ -1111,8 +1428,16 @@ public class WorkflowScreen extends Screen {
             WorkflowStep step
     ) {
 
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
+
         if (state.currentWorkflow == null
                 || step == null) {
+
             return;
         }
 
@@ -1125,7 +1450,9 @@ public class WorkflowScreen extends Screen {
             return;
         }
 
-        state.currentWorkflow.removeStep(index);
+        state.currentWorkflow.removeStep(
+                index
+        );
 
         state.nodePositions.remove(
                 step.getId()
@@ -1169,39 +1496,24 @@ public class WorkflowScreen extends Screen {
             return null;
         }
 
-        return switch (source.getType()) {
-
-            case EXECUTE_COMMAND -> WorkflowAction.executeCommand(
-                    source.getData()
-            );
-
-            case GIVE_ITEM -> WorkflowAction.giveItem(
-                    source.getData(),
-                    source.getCount()
-            );
-
-            case ENABLE_MARKER -> WorkflowAction.enableMarker(
-                    source.getData()
-            );
-
-            case DISABLE_MARKER -> WorkflowAction.disableMarker(
-                    source.getData()
-            );
-
-            case MESSAGE -> WorkflowAction.message(
-                    source.getData()
-            );
-
-            case SOUND -> WorkflowAction.sound(
-                    source.getData()
-            );
-        };
+        return WorkflowAction.of(
+                source.getType(),
+                source.getData(),
+                source.getCount()
+        );
     }
 
     /*
      * 创建工作流
      */
     private void createWorkflow() {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
 
         Workflow workflow =
                 Workflow.create(
@@ -1212,9 +1524,13 @@ public class WorkflowScreen extends Screen {
                         )
                 );
 
-        state.workflows.add(workflow);
+        state.workflows.add(
+                workflow
+        );
 
-        selectWorkflow(workflow);
+        selectWorkflow(
+                workflow
+        );
 
         markDirty(
                 "已创建工作流"
@@ -1227,6 +1543,13 @@ public class WorkflowScreen extends Screen {
     private void deleteWorkflow(
             Workflow workflow
     ) {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
 
         if (workflow == null) {
             return;
@@ -1243,17 +1566,29 @@ public class WorkflowScreen extends Screen {
                 workflowId
         );
 
+        state.nodePositions.entrySet()
+                .removeIf(
+                        entry ->
+                                workflow.getSteps()
+                                        .stream()
+                                        .noneMatch(
+                                                step ->
+                                                        step.getId()
+                                                                .equals(
+                                                                        entry.getKey()
+                                                                )
+                                        )
+                );
+
         if (state.workflows.isEmpty()) {
 
-            Workflow fallback =
-                    Workflow.create(
-                            "新建工作流"
-                    );
+            state.currentWorkflow = null;
 
-            state.workflows.add(fallback);
-        }
+            state.selectedWorkflowIndex = -1;
 
-        if (state.currentWorkflow == workflow
+            state.selectedStepId = null;
+
+        } else if (state.currentWorkflow == workflow
                 || state.currentWorkflow == null) {
 
             state.currentWorkflow =
@@ -1318,8 +1653,6 @@ public class WorkflowScreen extends Screen {
         state.panX = 0.0D;
         state.panY = 0.0D;
 
-        state.sidebarScroll = 0.0D;
-
         state.workflowMenuOpen = false;
         state.nodeMenuOpen = false;
 
@@ -1375,6 +1708,13 @@ public class WorkflowScreen extends Screen {
             Workflow workflow
     ) {
 
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
+
         if (workflow == null) {
             return;
         }
@@ -1394,7 +1734,9 @@ public class WorkflowScreen extends Screen {
                 renameBox.getValue().length()
         );
 
-        renameBox.setFocused(true);
+        renameBox.setFocused(
+                true
+        );
 
         updateEditorBounds();
     }
@@ -1403,6 +1745,15 @@ public class WorkflowScreen extends Screen {
      * 确认重命名
      */
     private void confirmRename() {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            closeRenameDialog();
+
+            return;
+        }
 
         if (!state.renameDialogOpen) {
             return;
@@ -1434,7 +1785,9 @@ public class WorkflowScreen extends Screen {
             return;
         }
 
-        workflow.setName(name);
+        workflow.setName(
+                name
+        );
 
         markDirty(
                 "工作流名称已修改"
@@ -1454,7 +1807,10 @@ public class WorkflowScreen extends Screen {
 
         if (renameBox != null) {
 
-            renameBox.setFocused(false);
+            renameBox.setFocused(
+                    false
+            );
+
             renameBox.visible = false;
         }
 
@@ -1470,6 +1826,7 @@ public class WorkflowScreen extends Screen {
                 || state.currentWorkflow.isEmpty()) {
 
             state.zoom = 1.0D;
+
             state.panX = 0.0D;
             state.panY = 0.0D;
 
@@ -1547,8 +1904,8 @@ public class WorkflowScreen extends Screen {
 
         int canvasHeight =
                 height
-                        - HEADER_HEIGHT
-                        - FOOTER_HEIGHT;
+                        - WorkflowFrameLayout.HEADER_HEIGHT
+                        - WorkflowFrameLayout.FOOTER_HEIGHT;
 
         double zoomX =
                 (canvasWidth - 80)
@@ -1588,9 +1945,59 @@ public class WorkflowScreen extends Screen {
     }
 
     /*
-     * 保存
+     * 保存工作流
      */
     private void saveWorkflow() {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
+
+        if (!state.dirty) {
+
+            markStatus(
+                    "没有需要保存的修改",
+                    COLOR_TEXT_SECONDARY
+            );
+
+            return;
+        }
+
+        /*
+         * 当前没有工作流时允许保存空列表
+         *
+         * 空列表代表删除了全部工作流
+         */
+        ModPackets.CHANNEL.sendToServer(
+                new WorkflowSavePacket(
+                        new ArrayList<>(
+                                state.workflows
+                        )
+                )
+        );
+
+        /*
+         * 这里暂时不能立即认为服务器已经保存成功
+         *
+         * 服务端会进行权限检查和数据校验
+         */
+        markStatus(
+                "正在保存...",
+                COLOR_WARNING
+        );
+    }
+
+    /*
+     * 服务端返回最新工作流数据
+     */
+    public void onWorkflowDataUpdated() {
+
+        if (!state.dirty) {
+            return;
+        }
 
         state.dirty = false;
 
@@ -1601,9 +2008,298 @@ public class WorkflowScreen extends Screen {
     }
 
     /*
-     * 测试
+     * 删除当前选中的 Action
+     */
+    private void deleteSelectedAction() {
+
+        if (!canManageWorkflows()) {
+            markPermissionDenied();
+            return;
+        }
+
+        if (!state.actionPickerOpen) {
+            return;
+        }
+
+        WorkflowStep step =
+                findStepById(
+                        state.actionPickerStepId
+                );
+
+        int index =
+                state.getSelectedActionIndex();
+
+        if (step == null
+                || index < 0
+                || index >= step.getActionCount()) {
+            return;
+        }
+
+        step.removeAction(index);
+
+        if (step.getActionCount() == 0) {
+            state.selectedActionIndex = -1;
+        } else {
+            state.selectedActionIndex =
+                    Math.min(
+                            index,
+                            step.getActionCount() - 1
+                    );
+        }
+
+        markDirty(
+                "已删除动作"
+        );
+
+        syncActionEditors();
+    }
+
+    /*
+     * 同步当前 Action 编辑器
+     */
+    private void syncActionEditors() {
+
+        if (actionDataBox == null
+                || actionCountBox == null) {
+
+            return;
+        }
+
+        if (!state.actionPickerOpen) {
+
+            actionDataBox.setFocused(false);
+            actionCountBox.setFocused(false);
+
+            actionDataBox.visible = false;
+            actionCountBox.visible = false;
+
+            updateEditorBounds();
+
+            return;
+        }
+
+        WorkflowStep step =
+                findStepById(
+                        state.actionPickerStepId != null
+                                ? state.actionPickerStepId
+                                : state.selectedStepId
+                );
+
+        int index =
+                state.getSelectedActionIndex();
+
+        if (step == null
+                || index < 0
+                || index >= step.getActionCount()) {
+
+            actionDataBox.setFocused(false);
+            actionCountBox.setFocused(false);
+
+            actionDataBox.visible = false;
+            actionCountBox.visible = false;
+
+            updateEditorBounds();
+
+            return;
+        }
+
+        WorkflowAction action =
+                step.getAction(index);
+
+        if (action == null) {
+
+            actionDataBox.visible = false;
+            actionCountBox.visible = false;
+
+            updateEditorBounds();
+
+            return;
+        }
+
+        String data =
+                action.getData() == null
+                        ? ""
+                        : action.getData();
+
+        if (action.getType()
+                == WorkflowAction.Type.EXECUTE_COMMAND
+                && data.startsWith("/")) {
+
+            data = data.substring(1);
+        }
+
+        actionDataBox.setValue(
+                data
+        );
+
+        actionDataBox.setCursorPosition(
+                data.length()
+        );
+
+        actionDataBox.setFocused(
+                false
+        );
+
+        if (action.getType()
+                == WorkflowAction.Type.GIVE_ITEM) {
+
+            actionCountBox.setValue(
+                    String.valueOf(
+                            action.getCount()
+                    )
+            );
+
+            actionCountBox.setCursorPosition(
+                    actionCountBox
+                            .getValue()
+                            .length()
+            );
+
+            actionCountBox.visible = true;
+
+        } else {
+
+            actionCountBox.setFocused(
+                    false
+            );
+
+            actionCountBox.visible = false;
+        }
+
+        actionDataBox.visible = true;
+
+        updateEditorBounds();
+    }
+
+    /*
+     * 应用 Action 编辑修改
+     */
+    private void applyActionEditorChanges() {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
+
+        if (!state.actionPickerOpen) {
+            return;
+        }
+
+        WorkflowStep step =
+                findStepById(
+                        state.actionPickerStepId
+                );
+
+        int index =
+                state.getSelectedActionIndex();
+
+        if (step == null
+                || index < 0
+                || index >= step.getActionCount()) {
+
+            markStatus(
+                    "请先选择一个动作",
+                    COLOR_WARNING
+            );
+
+            return;
+        }
+
+        WorkflowAction action =
+                step.getAction(index);
+
+        if (action == null) {
+            return;
+        }
+
+        String data =
+                actionDataBox.getValue();
+
+        if (data == null) {
+            data = "";
+        }
+
+        /*
+         * 命令动作只在界面显示 /，实际数据不保存这个前缀。
+         */
+        if (action.getType()
+                == WorkflowAction.Type.EXECUTE_COMMAND) {
+
+            data = data.stripLeading();
+
+            if (data.startsWith("/")) {
+                data = data.substring(1);
+            }
+        }
+
+        /*
+         * GIVE_ITEM 额外保存数量
+         */
+        if (action.getType()
+                == WorkflowAction.Type.GIVE_ITEM) {
+
+            String countText =
+                    actionCountBox.getValue()
+                            .trim();
+
+            int count;
+
+            try {
+
+                count =
+                        Integer.parseInt(
+                                countText
+                        );
+
+            } catch (NumberFormatException exception) {
+
+                markStatus(
+                        "数量必须是正整数",
+                        COLOR_DANGER
+                );
+
+                return;
+            }
+
+            if (count <= 0) {
+
+                markStatus(
+                        "数量必须大于 0",
+                        COLOR_DANGER
+                );
+
+                return;
+            }
+
+            action.setCount(
+                    count
+            );
+        }
+
+        action.setData(
+                data
+        );
+
+        markDirty(
+                "已应用动作修改"
+        );
+
+        closeActionPicker();
+    }
+
+    /*
+     * 测试工作流
      */
     private void testWorkflow() {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
 
         if (state.currentWorkflow == null
                 || state.currentWorkflow.isEmpty()) {
@@ -1644,7 +2340,6 @@ public class WorkflowScreen extends Screen {
                 button
         );
     }
-
 
     /*
      * 顶部点击
@@ -1704,7 +2399,7 @@ public class WorkflowScreen extends Screen {
                 mouseX,
                 mouseY,
                 8,
-                HEADER_HEIGHT + 8,
+                WorkflowFrameLayout.HEADER_HEIGHT + 8,
                 state.sidebarCollapsed
                         ? 26
                         : 30,
@@ -1725,7 +2420,7 @@ public class WorkflowScreen extends Screen {
                     getFilteredWorkflows();
 
             int y =
-                    HEADER_HEIGHT + 50;
+                    WorkflowFrameLayout.HEADER_HEIGHT + 50;
 
             for (Workflow workflow :
                     visible) {
@@ -1749,12 +2444,12 @@ public class WorkflowScreen extends Screen {
                 y += 38;
             }
 
-            return true;
+            return false;
         }
 
         int newY =
                 height
-                        - FOOTER_HEIGHT
+                        - WorkflowFrameLayout.FOOTER_HEIGHT
                         - 36;
 
         if (inside(
@@ -1762,27 +2457,32 @@ public class WorkflowScreen extends Screen {
                 mouseY,
                 8,
                 newY,
-                SIDEBAR_EXPANDED_WIDTH - 16,
+                WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH - 16,
                 28
         )) {
+
+            if (!canManageWorkflows()) {
+
+                markPermissionDenied();
+
+                return true;
+            }
 
             createWorkflow();
 
             return true;
         }
 
-        List<Workflow> visible =
-                getFilteredWorkflows();
+        List<Workflow> visible = getFilteredWorkflows();
 
         int listTop =
-                HEADER_HEIGHT + 52;
+                WorkflowFrameLayout.workflowListTop();
 
         int y =
-                listTop
-                        - (int) state.sidebarScroll;
+                listTop - (int) state.sidebarScroll;
 
         int itemWidth =
-                SIDEBAR_EXPANDED_WIDTH - 16;
+                WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH - 16;
 
         for (Workflow workflow :
                 visible) {
@@ -1793,33 +2493,11 @@ public class WorkflowScreen extends Screen {
                     8,
                     y,
                     itemWidth,
-                    WORKFLOW_ITEM_HEIGHT - 4
+                    WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT - 4
             )) {
 
-                int pinX =
-                        8
-                                + itemWidth
-                                - 44;
-
-                int moreX =
-                        8
-                                + itemWidth
-                                - 22;
-
-                if (mouseX >= pinX
-                        && mouseX
-                        < pinX + 18) {
-
-                    togglePin(
-                            workflow
-                    );
-
-                    return true;
-                }
-
-                if (mouseX >= moreX
-                        && mouseX
-                        < moreX + 18) {
+                if (button
+                        == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
 
                     state.workflowMenuOpen = true;
 
@@ -1829,6 +2507,18 @@ public class WorkflowScreen extends Screen {
                     return true;
                 }
 
+                int pinX = 8 + itemWidth - 44;
+
+                if (mouseX >= pinX && mouseX < pinX + 18) {
+
+                    togglePin(
+                            workflow
+                    );
+
+                    return true;
+                }
+
+
                 selectWorkflow(
                         workflow
                 );
@@ -1836,8 +2526,7 @@ public class WorkflowScreen extends Screen {
                 return true;
             }
 
-            y +=
-                    WORKFLOW_ITEM_HEIGHT;
+            y += WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT;
         }
 
         return false;
@@ -1856,10 +2545,10 @@ public class WorkflowScreen extends Screen {
                 getSidebarWidth();
 
         int canvasTop =
-                HEADER_HEIGHT;
+                WorkflowFrameLayout.HEADER_HEIGHT;
 
         int canvasBottom =
-                height - FOOTER_HEIGHT;
+                height - WorkflowFrameLayout.FOOTER_HEIGHT;
 
         if (!inside(
                 mouseX,
@@ -1874,14 +2563,11 @@ public class WorkflowScreen extends Screen {
             return false;
         }
 
-        int toolbarX =
-                canvasX + 14;
+        int toolbarX = canvasX + 14;
 
-        int toolbarY =
-                HEADER_HEIGHT + 12;
+        int toolbarY = WorkflowFrameLayout.HEADER_HEIGHT + 12;
 
-        if (button
-                == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
 
             if (inside(
                     mouseX,
@@ -1891,6 +2577,13 @@ public class WorkflowScreen extends Screen {
                     64,
                     22
             )) {
+
+                if (!canManageWorkflows()) {
+
+                    markPermissionDenied();
+
+                    return true;
+                }
 
                 openMarkerPicker();
 
@@ -1982,6 +2675,14 @@ public class WorkflowScreen extends Screen {
         state.selectedStepId =
                 clickedStep.getId();
 
+        /*
+         * 普通玩家只能查看节点
+         * 不能开始拖动节点
+         */
+        if (!canManageWorkflows()) {
+            return true;
+        }
+
         NodePosition position =
                 state.nodePositions.get(
                         state.selectedStepId
@@ -2014,7 +2715,6 @@ public class WorkflowScreen extends Screen {
         return true;
     }
 
-
     /*
      * 鼠标拖动
      */
@@ -2032,6 +2732,16 @@ public class WorkflowScreen extends Screen {
 
         this.mouseY =
                 (int) mouseY;
+
+        /*
+         * 普通玩家不能修改节点位置
+         */
+        if (!canManageWorkflows()
+                && button
+                == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+
+            return true;
+        }
 
         return inputHandler.handleMouseDragged(
                 mouseX,
@@ -2059,7 +2769,6 @@ public class WorkflowScreen extends Screen {
         );
     }
 
-
     /*
      * 鼠标滚轮
      */
@@ -2077,7 +2786,6 @@ public class WorkflowScreen extends Screen {
         );
     }
 
-
     /*
      * 键盘快捷键
      */
@@ -2088,6 +2796,18 @@ public class WorkflowScreen extends Screen {
             int modifiers
     ) {
 
+        if (state.actionPickerOpen
+                && keyCode == GLFW.GLFW_KEY_DELETE
+                && ((actionDataBox != null && actionDataBox.isFocused())
+                || (actionCountBox != null && actionCountBox.isFocused()))) {
+
+            return super.keyPressed(
+                    keyCode,
+                    scanCode,
+                    modifiers
+            );
+        }
+
         return inputHandler.handleKeyPressed(
                 keyCode,
                 scanCode,
@@ -2095,11 +2815,17 @@ public class WorkflowScreen extends Screen {
         );
     }
 
-
     /*
      * 删除当前选中的节点
      */
     private void deleteSelectedNode() {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
 
         if (state.selectedStepId == null) {
             return;
@@ -2111,18 +2837,21 @@ public class WorkflowScreen extends Screen {
                 );
 
         if (step == null) {
+
             state.selectedStepId = null;
+
             return;
         }
 
-        deleteNode(step);
+        deleteNode(
+                step
+        );
     }
 
     @Override
     public void onClose() {
 
-        minecraft.setScreen(
-                parent
+        minecraft.setScreen(new BCNMainScreen()
         );
     }
 
@@ -2252,10 +2981,10 @@ public class WorkflowScreen extends Screen {
                 getSidebarWidth();
 
         int canvasTop =
-                HEADER_HEIGHT;
+                WorkflowFrameLayout.HEADER_HEIGHT;
 
         int canvasBottom =
-                height - FOOTER_HEIGHT;
+                height - WorkflowFrameLayout.FOOTER_HEIGHT;
 
         /*
          * 鼠标不在 Canvas 中
@@ -2341,7 +3070,6 @@ public class WorkflowScreen extends Screen {
         return null;
     }
 
-
     /*
      * 确保所有节点都有编辑器位置
      */
@@ -2405,7 +3133,9 @@ public class WorkflowScreen extends Screen {
                 continue;
             }
 
-            result.add(workflow);
+            result.add(
+                    workflow
+            );
         }
 
         result.sort(
@@ -2455,7 +3185,9 @@ public class WorkflowScreen extends Screen {
                     )
                     .contains(keyword)) {
 
-                result.add(marker);
+                result.add(
+                        marker
+                );
             }
         }
 
@@ -2478,6 +3210,13 @@ public class WorkflowScreen extends Screen {
     private void markDirty(
             String text
     ) {
+
+        if (!canManageWorkflows()) {
+
+            markPermissionDenied();
+
+            return;
+        }
 
         state.dirty = true;
 
@@ -2505,9 +3244,9 @@ public class WorkflowScreen extends Screen {
      */
     private int getSidebarWidth() {
 
-        return state.sidebarCollapsed
-                ? SIDEBAR_COLLAPSED_WIDTH
-                : SIDEBAR_EXPANDED_WIDTH;
+        return WorkflowFrameLayout.sidebarWidth(
+                state.sidebarCollapsed
+        );
     }
 
     /*
@@ -2526,7 +3265,7 @@ public class WorkflowScreen extends Screen {
             double worldY
     ) {
 
-        return HEADER_HEIGHT
+        return WorkflowFrameLayout.HEADER_HEIGHT
                 + state.panY
                 + worldY * state.zoom;
     }
@@ -2551,7 +3290,7 @@ public class WorkflowScreen extends Screen {
 
         return (
                 screenY
-                        - HEADER_HEIGHT
+                        - WorkflowFrameLayout.HEADER_HEIGHT
                         - state.panY
         ) / state.zoom;
     }
@@ -2591,5 +3330,4 @@ public class WorkflowScreen extends Screen {
                 )
         );
     }
-
 }

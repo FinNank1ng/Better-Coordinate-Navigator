@@ -17,7 +17,7 @@ public abstract class GuiMapMixin {
      * Xaero 原生按钮
      */
 
-     @Shadow
+    @Shadow
     private Button settingsButton;
 
     @Shadow

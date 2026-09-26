@@ -1,10 +1,16 @@
 package io.github.FinNank1ng.better_coordinate_navigator.client.gui;
 
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreen;
+import io.github.FinNank1ng.better_coordinate_navigator.data.ClientWorkflowCache;
+import io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets;
+import io.github.FinNank1ng.better_coordinate_navigator.network.WorkflowDataRequestPacket;
+
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+
+import java.util.List;
 
 public class BCNMainScreen extends Screen {
 
@@ -14,6 +20,12 @@ public class BCNMainScreen extends Screen {
 
     @Override
     protected void init() {
+        /*
+         * 请求服务器同步最新工作流数据
+         */
+        ModPackets.CHANNEL.sendToServer(
+                new WorkflowDataRequestPacket()
+        );
 
         int centerX = this.width / 2;
 
@@ -56,7 +68,7 @@ public class BCNMainScreen extends Screen {
                 Button.builder(
                         Component.literal("工作流"),
                         button -> minecraft.setScreen(
-                                new WorkflowScreen(this)
+                                new WorkflowScreen(this, ClientWorkflowCache.getWorkflows())
                         )
                 ).bounds(
                         buttonX,

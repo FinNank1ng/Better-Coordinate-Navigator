@@ -161,6 +161,22 @@ public class WorkflowAction {
         );
     }
 
+    /*
+     * 根据持久化数据创建动作
+     */
+    public static WorkflowAction of(
+            Type type,
+            String data,
+            int count
+    ) {
+
+        return new WorkflowAction(
+                type,
+                data,
+                count
+        );
+    }
+
 
     public Type getType() {
         return type;

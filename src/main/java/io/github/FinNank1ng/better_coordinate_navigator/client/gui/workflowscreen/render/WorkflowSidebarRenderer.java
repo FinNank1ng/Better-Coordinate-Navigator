@@ -1,6 +1,7 @@
 package io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render;
 
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreenState;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowFrameLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.Workflow;
 
 import net.minecraft.client.gui.Font;
@@ -29,14 +30,6 @@ public class WorkflowSidebarRenderer {
     private static final int COLOR_TEXT_MUTED = 0xFF6E7C8B;
     private static final int COLOR_WARNING = 0xFFFFC66D;
 
-    private static final int HEADER_HEIGHT = 52;
-    private static final int FOOTER_HEIGHT = 34;
-
-    private static final int SIDEBAR_EXPANDED_WIDTH = 158;
-    private static final int SIDEBAR_COLLAPSED_WIDTH = 42;
-
-    private static final int WORKFLOW_ITEM_HEIGHT = 52;
-
     private final WorkflowScreenState state;
     private final Font font;
 
@@ -62,21 +55,23 @@ public class WorkflowSidebarRenderer {
     ) {
 
         int sidebarWidth =
-                getSidebarWidth();
+                WorkflowFrameLayout.sidebarWidth(
+                        state.isSidebarCollapsed()
+                );
 
         graphics.fill(
                 0,
-                HEADER_HEIGHT,
+                WorkflowFrameLayout.HEADER_HEIGHT,
                 sidebarWidth,
-                screenHeight - FOOTER_HEIGHT,
+                screenHeight - WorkflowFrameLayout.FOOTER_HEIGHT,
                 COLOR_SIDEBAR
         );
 
         graphics.fill(
                 sidebarWidth - 1,
-                HEADER_HEIGHT,
+                WorkflowFrameLayout.HEADER_HEIGHT,
                 sidebarWidth,
-                screenHeight - FOOTER_HEIGHT,
+                screenHeight - WorkflowFrameLayout.FOOTER_HEIGHT,
                 COLOR_BORDER
         );
 
@@ -102,8 +97,8 @@ public class WorkflowSidebarRenderer {
         graphics.drawString(
                 font,
                 Component.literal("工作流"),
-                14,
-                HEADER_HEIGHT + 13,
+                WorkflowFrameLayout.SIDEBAR_HEADER_X,
+                WorkflowFrameLayout.sidebarHeaderY(),
                 COLOR_TEXT
         );
 
@@ -113,15 +108,21 @@ public class WorkflowSidebarRenderer {
                         state.getWorkflows().size()
                                 + " 个"
                 ),
-                76,
-                HEADER_HEIGHT + 13,
+                WorkflowFrameLayout.SIDEBAR_COUNT_X,
+                WorkflowFrameLayout.sidebarHeaderY(),
                 COLOR_TEXT_MUTED
+        );
+
+        drawSearchField(
+                graphics
         );
 
         drawWorkflowList(
                 graphics,
-                HEADER_HEIGHT + 52,
-                screenHeight - FOOTER_HEIGHT - 48,
+                WorkflowFrameLayout.workflowListTop(),
+                WorkflowFrameLayout.workflowListBottom(
+                        screenHeight
+                ),
                 mouseX,
                 mouseY,
                 visibleWorkflows
@@ -136,6 +137,69 @@ public class WorkflowSidebarRenderer {
     }
 
     /*
+     * 搜索框背景
+     *
+     * 真正可输入的 EditBox 由 WorkflowScreen 管理
+     * 这里仅负责统一绘制其外框
+     */
+    private void drawSearchField(
+            GuiGraphics graphics
+    ) {
+
+        int x =
+                WorkflowFrameLayout.SIDEBAR_SEARCH_X;
+
+        int y =
+                WorkflowFrameLayout.sidebarSearchY();
+
+        int width =
+                WorkflowFrameLayout.SIDEBAR_SEARCH_WIDTH;
+
+        int height =
+                WorkflowFrameLayout.SIDEBAR_SEARCH_HEIGHT;
+
+        graphics.fill(
+                x,
+                y,
+                x + width,
+                y + height,
+                0xFF0C141D
+        );
+
+        graphics.fill(
+                x,
+                y,
+                x + width,
+                y + 1,
+                COLOR_BORDER
+        );
+
+        graphics.fill(
+                x,
+                y + height - 1,
+                x + width,
+                y + height,
+                COLOR_BORDER
+        );
+
+        graphics.fill(
+                x,
+                y,
+                x + 1,
+                y + height,
+                COLOR_BORDER
+        );
+
+        graphics.fill(
+                x + width - 1,
+                y,
+                x + width,
+                y + height,
+                COLOR_BORDER
+        );
+    }
+
+    /*
      * 折叠按钮
      */
     private void drawCollapseButton(
@@ -144,15 +208,13 @@ public class WorkflowSidebarRenderer {
             int mouseY
     ) {
 
-        int x = 8;
+        int x =
+                WorkflowFrameLayout.SIDEBAR_COLLAPSE_X;
 
         int y =
-                HEADER_HEIGHT + 8;
+                WorkflowFrameLayout.sidebarCollapseY();
 
-        int buttonWidth =
-                state.isSidebarCollapsed()
-                        ? 26
-                        : 30;
+        int buttonWidth = 26;
 
         boolean hovered =
                 inside(
@@ -161,7 +223,7 @@ public class WorkflowSidebarRenderer {
                         x,
                         y,
                         buttonWidth,
-                        28
+                        WorkflowFrameLayout.SIDEBAR_COLLAPSE_HEIGHT
                 );
 
         drawPanelButton(
@@ -169,7 +231,7 @@ public class WorkflowSidebarRenderer {
                 x,
                 y,
                 buttonWidth,
-                28,
+                WorkflowFrameLayout.SIDEBAR_COLLAPSE_HEIGHT,
                 state.isSidebarCollapsed()
                         ? ">"
                         : "<",
@@ -192,7 +254,7 @@ public class WorkflowSidebarRenderer {
 
         int contentHeight =
                 visibleWorkflows.size()
-                        * WORKFLOW_ITEM_HEIGHT;
+                        * WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT;
 
         int viewportHeight =
                 listBottom - listTop;
@@ -214,6 +276,16 @@ public class WorkflowSidebarRenderer {
                 sidebarScroll
         );
 
+        /*
+         * 只允许工作流卡片绘制在列表区域内部
+         */
+        graphics.enableScissor(
+                0,
+                listTop,
+                WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH,
+                listBottom
+        );
+
         int y =
                 listTop
                         - (int) sidebarScroll;
@@ -221,7 +293,10 @@ public class WorkflowSidebarRenderer {
         for (Workflow workflow :
                 visibleWorkflows) {
 
-            if (y + WORKFLOW_ITEM_HEIGHT >= listTop
+            int itemHeight =
+                    WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT - 4;
+
+            if (y + WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT >= listTop
                     && y <= listBottom) {
 
                 boolean selected =
@@ -231,10 +306,10 @@ public class WorkflowSidebarRenderer {
                         inside(
                                 mouseX,
                                 mouseY,
-                                8,
+                                WorkflowFrameLayout.SIDEBAR_ITEM_HORIZONTAL_PADDING,
                                 y,
-                                SIDEBAR_EXPANDED_WIDTH - 16,
-                                WORKFLOW_ITEM_HEIGHT - 4
+                                WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH - 16,
+                                itemHeight
                         );
 
                 drawWorkflowItem(
@@ -246,8 +321,13 @@ public class WorkflowSidebarRenderer {
                 );
             }
 
-            y += WORKFLOW_ITEM_HEIGHT;
+            y += WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT;
         }
+
+        /*
+         * 恢复正常绘制区域
+         */
+        graphics.disableScissor();
     }
 
     /*
@@ -262,13 +342,14 @@ public class WorkflowSidebarRenderer {
     ) {
 
         int y =
-                HEADER_HEIGHT + 50;
+                WorkflowFrameLayout.HEADER_HEIGHT + 50;
 
         for (Workflow workflow :
                 visibleWorkflows) {
 
             if (y + 30
-                    >= screenHeight - FOOTER_HEIGHT) {
+                    >= screenHeight
+                    - WorkflowFrameLayout.FOOTER_HEIGHT) {
                 break;
             }
 
@@ -329,13 +410,14 @@ public class WorkflowSidebarRenderer {
             boolean hovered
     ) {
 
-        int x = 8;
+        int x =
+                WorkflowFrameLayout.SIDEBAR_ITEM_HORIZONTAL_PADDING;
 
         int itemWidth =
-                SIDEBAR_EXPANDED_WIDTH - 16;
+                WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH - 16;
 
         int itemHeight =
-                WORKFLOW_ITEM_HEIGHT - 4;
+                WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT - 4;
 
         int fill =
                 selected
@@ -373,7 +455,7 @@ public class WorkflowSidebarRenderer {
                                 : "○"
                 ),
                 x + 10,
-                y + 12,
+                y + 10,
                 selected
                         ? COLOR_ACCENT
                         : COLOR_TEXT_MUTED
@@ -395,7 +477,7 @@ public class WorkflowSidebarRenderer {
                 font,
                 Component.literal(name),
                 x + 28,
-                y + 9,
+                y + 7,
                 selected
                         ? COLOR_TEXT
                         : COLOR_TEXT_SECONDARY
@@ -408,7 +490,7 @@ public class WorkflowSidebarRenderer {
                                 + " 个步骤"
                 ),
                 x + 28,
-                y + 28,
+                y + 25,
                 COLOR_TEXT_MUTED
         );
 
@@ -416,9 +498,6 @@ public class WorkflowSidebarRenderer {
 
             int pinX =
                     x + itemWidth - 44;
-
-            int moreX =
-                    x + itemWidth - 22;
 
             graphics.drawString(
                     font,
@@ -430,16 +509,8 @@ public class WorkflowSidebarRenderer {
                                     : "○"
                     ),
                     pinX,
-                    y + 17,
-                    COLOR_WARNING
-            );
-
-            graphics.drawString(
-                    font,
-                    Component.literal("⋯"),
-                    moreX,
                     y + 14,
-                    COLOR_TEXT
+                    COLOR_WARNING
             );
         }
     }
@@ -454,15 +525,16 @@ public class WorkflowSidebarRenderer {
             int mouseY
     ) {
 
-        int x = 8;
+        int x =
+                WorkflowFrameLayout.SIDEBAR_ITEM_HORIZONTAL_PADDING;
 
         int y =
-                screenHeight
-                        - FOOTER_HEIGHT
-                        - 36;
+                WorkflowFrameLayout.sidebarNewButtonY(
+                        screenHeight
+                );
 
         int buttonWidth =
-                SIDEBAR_EXPANDED_WIDTH - 16;
+                WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH - 16;
 
         boolean hovered =
                 inside(
@@ -471,7 +543,7 @@ public class WorkflowSidebarRenderer {
                         x,
                         y,
                         buttonWidth,
-                        22
+                        WorkflowFrameLayout.SIDEBAR_NEW_BUTTON_HEIGHT
                 );
 
         drawPanelButton(
@@ -479,18 +551,11 @@ public class WorkflowSidebarRenderer {
                 x,
                 y,
                 buttonWidth,
-                22,
+                WorkflowFrameLayout.SIDEBAR_NEW_BUTTON_HEIGHT,
                 "+ 新建工作流",
                 hovered,
                 COLOR_ACCENT
         );
-    }
-
-    private int getSidebarWidth() {
-
-        return state.isSidebarCollapsed()
-                ? SIDEBAR_COLLAPSED_WIDTH
-                : SIDEBAR_EXPANDED_WIDTH;
     }
 
     private boolean inside(

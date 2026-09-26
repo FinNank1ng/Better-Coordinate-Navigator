@@ -23,6 +23,7 @@ public class WorkflowScreenState {
 
     int selectedWorkflowIndex = -1;
     UUID selectedStepId;
+    int selectedActionIndex = -1;
 
     boolean sidebarCollapsed = false;
 
@@ -87,6 +88,17 @@ public class WorkflowScreenState {
 
     public UUID getSelectedStepId() {
         return selectedStepId;
+    }
+
+    public int getSelectedActionIndex() {
+        return selectedActionIndex;
+    }
+
+    public void setSelectedActionIndex(
+            int selectedActionIndex
+    ) {
+        this.selectedActionIndex =
+                selectedActionIndex;
     }
 
     public double getZoom() {

@@ -47,5 +47,29 @@ public class ModPackets {
                 OpenBCNMainScreenPacket::new,
                 OpenBCNMainScreenPacket::handle
         );
+
+        CHANNEL.registerMessage(
+                id++,
+                WorkflowDataRequestPacket.class,
+                WorkflowDataRequestPacket::encode,
+                WorkflowDataRequestPacket::new,
+                WorkflowDataRequestPacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                WorkflowDataUpdatePacket.class,
+                WorkflowDataUpdatePacket::encode,
+                WorkflowDataUpdatePacket::new,
+                WorkflowDataUpdatePacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                WorkflowSavePacket.class,
+                WorkflowSavePacket::encode,
+                WorkflowSavePacket::new,
+                WorkflowSavePacket::handle
+        );
     }
 }
