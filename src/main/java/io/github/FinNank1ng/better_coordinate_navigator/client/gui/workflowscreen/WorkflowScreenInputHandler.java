@@ -2,8 +2,8 @@ package io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscre
 
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowFrameLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreenState.NodePosition;
-import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowFrameLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowNodeActionEditorLayout;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowMarkerPickerLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.Workflow;
 import io.github.FinNank1ng.better_coordinate_navigator.workflow.WorkflowAction;
@@ -954,27 +954,34 @@ public class WorkflowScreenInputHandler {
             return true;
         }
 
-        int x =
-                (
-                        screenWidth
-                                - MARKER_POPUP_WIDTH
-                )
-                        / 2;
-
-        int y =
-                (
+        WorkflowMarkerPickerLayout layout =
+                WorkflowMarkerPickerLayout.calculate(
+                        screenWidth,
                         screenHeight
-                                - MARKER_POPUP_HEIGHT
-                )
-                        / 2;
+                );
 
+        int popupX =
+                layout.getPopupX();
+
+        int popupY =
+                layout.getPopupY();
+
+        int popupWidth =
+                layout.getScaledWidth();
+
+        int popupHeight =
+                layout.getScaledHeight();
+
+        /*
+         * 点击弹窗外部
+         */
         if (!inside(
                 mouseX,
                 mouseY,
-                x,
-                y,
-                MARKER_POPUP_WIDTH,
-                MARKER_POPUP_HEIGHT
+                popupX,
+                popupY,
+                popupWidth,
+                popupHeight
         )) {
 
             closeMarkerPickerHandler.run();
@@ -982,26 +989,43 @@ public class WorkflowScreenInputHandler {
             return true;
         }
 
+        double scale =
+                layout.getScale();
+
+        /*
+         * 屏幕坐标转换为设计坐标
+         */
+        double designMouseX =
+                (mouseX - popupX)
+                        / scale;
+
+        double designMouseY =
+                (mouseY - popupY)
+                        / scale;
+
         /*
          * 搜索框交给原生 Widget 处理
          */
         if (inside(
-                mouseX,
-                mouseY,
-                x + 20,
-                y + 54,
-                MARKER_POPUP_WIDTH - 40,
+                designMouseX,
+                designMouseY,
+                20,
+                54,
+                WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
                 26
         )) {
 
             return false;
         }
 
+        /*
+         * 取消按钮
+         */
         if (inside(
-                mouseX,
-                mouseY,
-                x + MARKER_POPUP_WIDTH - 110,
-                y + MARKER_POPUP_HEIGHT - 38,
+                designMouseX,
+                designMouseY,
+                WorkflowMarkerPickerLayout.POPUP_WIDTH - 110,
+                WorkflowMarkerPickerLayout.POPUP_HEIGHT - 38,
                 90,
                 26
         )) {
@@ -1014,26 +1038,23 @@ public class WorkflowScreenInputHandler {
         List<QuestMarker> markers =
                 markerProvider.get();
 
-        int listTop =
-                y + 92;
-
-        int cardHeight = 58;
-        int gap = 8;
-
+        /*
+         * 列表区域
+         */
         int cardY =
-                listTop
+                layout.getListTop()
                         - (int) state.markerScroll;
 
         for (QuestMarker marker :
                 markers) {
 
             if (inside(
-                    mouseX,
-                    mouseY,
-                    x + 20,
+                    designMouseX,
+                    designMouseY,
+                    20,
                     cardY,
-                    MARKER_POPUP_WIDTH - 40,
-                    cardHeight
+                    WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
+                    WorkflowMarkerPickerLayout.CARD_HEIGHT
             )) {
 
                 if (state.replacingMarkerStepId != null) {
@@ -1064,7 +1085,8 @@ public class WorkflowScreenInputHandler {
             }
 
             cardY +=
-                    cardHeight + gap;
+                    WorkflowMarkerPickerLayout.CARD_HEIGHT
+                            + WorkflowMarkerPickerLayout.CARD_GAP;
         }
 
         return true;
@@ -1304,12 +1326,22 @@ public class WorkflowScreenInputHandler {
             List<QuestMarker> markers =
                     markerProvider.get();
 
+            WorkflowMarkerPickerLayout layout =
+                    WorkflowMarkerPickerLayout.calculate(
+                            screenWidth,
+                            screenHeight
+                    );
+
             int viewportHeight =
-                    MARKER_POPUP_HEIGHT
-                            - 138;
+                    layout.getListBottom()
+                            - layout.getListTop();
 
             int contentHeight =
-                    markers.size() * 66;
+                    markers.size()
+                            * (
+                            WorkflowMarkerPickerLayout.CARD_HEIGHT
+                                    + WorkflowMarkerPickerLayout.CARD_GAP
+                    );
 
             state.markerScroll =
                     clamp(

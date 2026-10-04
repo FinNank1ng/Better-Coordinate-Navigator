@@ -3,6 +3,7 @@ package io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscre
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.BCNMainScreen;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowFrameLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreenState.NodePosition;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowMarkerPickerLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowCanvasRenderer;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowFrameRenderer;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.render.WorkflowPopupRenderer;
@@ -540,11 +541,11 @@ public class WorkflowScreen extends Screen {
                             / 2;
 
             renameBox.setX(
-                    popupX + 20
+                    popupX + 26
             );
 
             renameBox.setY(
-                    popupY + 56
+                    popupY + 64
             );
 
             renameBox.setWidth(
@@ -1734,11 +1735,11 @@ public class WorkflowScreen extends Screen {
                 renameBox.getValue().length()
         );
 
+        updateEditorBounds();
+
         renameBox.setFocused(
                 true
         );
-
-        updateEditorBounds();
     }
 
     /*

@@ -2,6 +2,7 @@ package io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscre
 
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.WorkflowScreenState;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowFrameLayout;
+import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowMarkerPickerLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.client.gui.workflowscreen.layout.WorkflowNodeActionEditorLayout;
 import io.github.FinNank1ng.better_coordinate_navigator.data.ClientQuestCache;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
@@ -1077,67 +1078,111 @@ public class WorkflowPopupRenderer {
             List<QuestMarker> markers
     ) {
 
+        /*
+         * 遮罩保持屏幕原始尺寸
+         */
         drawOverlay(
                 graphics,
                 screenWidth,
                 screenHeight
         );
 
-        int x =
-                (screenWidth - MARKER_POPUP_WIDTH)
-                        / 2;
+        /*
+         * 使用统一 Layout 计算弹窗缩放与位置
+         */
+        WorkflowMarkerPickerLayout layout =
+                WorkflowMarkerPickerLayout.calculate(
+                        screenWidth,
+                        screenHeight
+                );
 
-        int y =
-                (screenHeight - MARKER_POPUP_HEIGHT)
-                        / 2;
+        double scale =
+                layout.getScale();
 
-        drawPanel(
-                graphics,
-                x,
-                y,
-                MARKER_POPUP_WIDTH,
-                MARKER_POPUP_HEIGHT
+        int popupX =
+                layout.getPopupX();
+
+        int popupY =
+                layout.getPopupY();
+
+        /*
+         * Popup 设计坐标
+         */
+        int designMouseX =
+                (int) Math.floor(
+                        (mouseX - popupX)
+                                / scale
+                );
+
+        int designMouseY =
+                (int) Math.floor(
+                        (mouseY - popupY)
+                                / scale
+                );
+
+        /*
+         * Popup 坐标系
+         */
+        graphics.pose().pushPose();
+
+        graphics.pose().translate(
+                popupX,
+                popupY,
+                0
         );
 
+        graphics.pose().scale(
+                (float) scale,
+                (float) scale,
+                1.0F
+        );
+
+        /*
+         * Popup 本体
+         */
+        drawPanel(
+                graphics,
+                0,
+                0,
+                WorkflowMarkerPickerLayout.POPUP_WIDTH,
+                WorkflowMarkerPickerLayout.POPUP_HEIGHT
+        );
+
+        /*
+         * 标题
+         */
         graphics.drawString(
                 font,
                 Component.literal("选择目标标点"),
-                x + 20,
-                y + 20,
+                20,
+                20,
                 COLOR_TEXT
         );
 
         graphics.drawString(
                 font,
                 Component.literal("从已有任务点中选择流程目标"),
-                x + 20,
-                y + 40,
+                20,
+                40,
                 COLOR_TEXT_MUTED
         );
 
-        int listTop =
-                y + 92;
+        /*
+         * 列表区域
+         */
+        int listTop = layout.getListTop();
 
-        int listBottom =
-                y
-                        + MARKER_POPUP_HEIGHT
-                        - 46;
+        int listBottom = layout.getListBottom();
 
-        int cardHeight = 58;
-        int gap = 8;
+        int cardHeight = WorkflowMarkerPickerLayout.CARD_HEIGHT;
 
-        int contentHeight =
-                markers.size()
-                        * (cardHeight + gap);
+        int gap = WorkflowMarkerPickerLayout.CARD_GAP;
 
-        int viewportHeight =
-                listBottom - listTop;
+        int contentHeight = markers.size() * (cardHeight + gap);
 
-        double maxScroll =
-                Math.max(
-                        0,
-                        contentHeight - viewportHeight
-                );
+        int viewportHeight = listBottom - listTop;
+
+        double maxScroll = Math.max(0, contentHeight - viewportHeight);
 
         double markerScroll =
                 clamp(
@@ -1149,14 +1194,20 @@ public class WorkflowPopupRenderer {
                 );
 
         if (legacyMode) {
+
             legacyMarkerScroll = markerScroll;
+
         } else {
-            state.setMarkerScroll(markerScroll);
+
+            state.setMarkerScroll(
+                    markerScroll
+            );
         }
 
-        int cardY =
-                listTop
-                        - (int) markerScroll;
+        /*
+         * 绘制列表
+         */
+        int cardY = listTop - (int) markerScroll;
 
         for (QuestMarker marker : markers) {
 
@@ -1165,19 +1216,19 @@ public class WorkflowPopupRenderer {
 
                 boolean hovered =
                         inside(
-                                mouseX,
-                                mouseY,
-                                x + 20,
+                                designMouseX,
+                                designMouseY,
+                                20,
                                 cardY,
-                                MARKER_POPUP_WIDTH - 40,
+                                WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
                                 cardHeight
                         );
 
                 drawPanelCard(
                         graphics,
-                        x + 20,
+                        20,
                         cardY,
-                        MARKER_POPUP_WIDTH - 40,
+                        WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
                         cardHeight,
                         hovered
                                 ? COLOR_NODE_HOVER
@@ -1190,17 +1241,14 @@ public class WorkflowPopupRenderer {
                 String name = marker.name;
 
                 if (name.length() > 55) {
-                    name =
-                            name.substring(
-                                    0,
-                                    55
-                            ) + "...";
+
+                    name = name.substring(0, 55) + "...";
                 }
 
                 graphics.drawString(
                         font,
                         Component.literal(name),
-                        x + 34,
+                        34,
                         cardY + 12,
                         hovered
                                 ? COLOR_ACCENT
@@ -1218,43 +1266,60 @@ public class WorkflowPopupRenderer {
                                         marker.z
                                 )
                         ),
-                        x + 34,
+                        34,
                         cardY + 34,
                         COLOR_TEXT_SECONDARY
                 );
             }
 
-            cardY += cardHeight + gap;
+            cardY +=
+                    cardHeight + gap;
         }
 
+        /*
+         * 空列表
+         */
         if (markers.isEmpty()) {
 
             graphics.drawString(
                     font,
                     Component.literal("没有找到任务点"),
-                    x + 20,
+                    20,
                     listTop + 24,
                     COLOR_TEXT
             );
         }
 
+        /*
+         * 取消按钮
+         */
+        int cancelX =
+                WorkflowMarkerPickerLayout.POPUP_WIDTH
+                        - 110;
+
+        int cancelY =
+                WorkflowMarkerPickerLayout.POPUP_HEIGHT
+                        - 38;
+
         drawPanelButton(
                 graphics,
-                x + MARKER_POPUP_WIDTH - 110,
-                y + MARKER_POPUP_HEIGHT - 38,
+                cancelX,
+                cancelY,
                 90,
                 26,
                 "取消",
                 inside(
-                        mouseX,
-                        mouseY,
-                        x + MARKER_POPUP_WIDTH - 110,
-                        y + MARKER_POPUP_HEIGHT - 38,
+                        designMouseX,
+                        designMouseY,
+                        cancelX,
+                        cancelY,
                         90,
                         26
                 ),
                 COLOR_TEXT
         );
+
+        graphics.pose().popPose();
     }
 
     /*
