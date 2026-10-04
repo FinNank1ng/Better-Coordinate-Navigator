@@ -44,6 +44,9 @@ public class WorkflowScreenState {
     UUID hoveredNodeId;
     long hoveredNodeStartTime;
 
+    UUID hoveredWorkflowId;
+    long hoveredWorkflowStartTime;
+
     double sidebarScroll = 0.0D;
     double markerScroll = 0.0D;
 
@@ -192,4 +195,5 @@ public class WorkflowScreenState {
             return y;
         }
     }
+
 }

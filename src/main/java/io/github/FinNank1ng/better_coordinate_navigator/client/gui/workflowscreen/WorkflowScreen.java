@@ -685,6 +685,8 @@ public class WorkflowScreen extends Screen {
 
         updateHoveredNode();
 
+        updateHoveredWorkflow();
+
         /*
          * 绘制工作流界面
          */
@@ -782,9 +784,8 @@ public class WorkflowScreen extends Screen {
                 && !state.nodeMenuOpen
                 && !state.renameDialogOpen) {
 
-            drawNodeTooltip(
-                    graphics
-            );
+            drawNodeTooltip(graphics);
+
         }
 
         graphics.flush();
@@ -818,6 +819,10 @@ public class WorkflowScreen extends Screen {
                 mouseX,
                 mouseY,
                 getFilteredWorkflows()
+        );
+
+        drawWorkflowTooltip(
+                graphics
         );
 
         canvasRenderer.renderZoomInfo(
@@ -890,6 +895,55 @@ public class WorkflowScreen extends Screen {
         graphics.flush();
 
         graphics.pose().popPose();
+    }
+
+    private Workflow findWorkflowAtSidebar(
+            double mouseX,
+            double mouseY
+    )
+    {
+
+        if(state.sidebarCollapsed)
+        {
+            return null;
+        }
+
+
+        List<Workflow> workflows =
+                getFilteredWorkflows();
+
+
+        int y =
+                WorkflowFrameLayout.workflowListTop()
+                        -
+                        (int)state.sidebarScroll;
+
+
+        int width =
+                WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH - 16;
+
+
+        for(Workflow workflow : workflows)
+        {
+
+            if(inside(
+                    mouseX,
+                    mouseY,
+                    8,
+                    y,
+                    width,
+                    WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT - 4
+            ))
+            {
+                return workflow;
+            }
+
+
+            y += WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT;
+        }
+
+
+        return null;
     }
 
     /*
@@ -1078,6 +1132,163 @@ public class WorkflowScreen extends Screen {
                 y + 62,
                 COLOR_TEXT_SECONDARY
         );
+    }
+
+    /*
+     * 绘制工作流 UUID 提示
+     */
+    private void drawWorkflowTooltip(
+            GuiGraphics graphics
+    ) {
+
+        if (state.hoveredWorkflowId == null) {
+            return;
+        }
+
+        if (System.currentTimeMillis()
+                - state.hoveredWorkflowStartTime
+                < NODE_TOOLTIP_DELAY) {
+
+            return;
+        }
+
+        Workflow workflow =
+                findWorkflow(
+                        state.hoveredWorkflowId
+                );
+
+        if (workflow == null) {
+            return;
+        }
+
+        int tooltipWidth = 320;
+        int tooltipHeight = 72;
+
+        int x =
+                getSidebarWidth() + 12;
+
+        int y =
+                mouseY + 12;
+
+        /*
+         * 防止 Tooltip 超出屏幕
+         */
+        if (x + tooltipWidth > width - 8) {
+
+            x =
+                    width
+                            - tooltipWidth
+                            - 8;
+        }
+
+        if (y + tooltipHeight > height - 8) {
+
+            y =
+                    mouseY
+                            - tooltipHeight
+                            - 12;
+        }
+
+        /*
+         * 背景
+         */
+        graphics.fill(
+                x,
+                y,
+                x + tooltipWidth,
+                y + tooltipHeight,
+                0xF0141B24
+        );
+
+        /*
+         * 顶部强调线
+         */
+        graphics.fill(
+                x,
+                y,
+                x + tooltipWidth,
+                y + 2,
+                COLOR_ACCENT
+        );
+
+        /*
+         * 工作流名称
+         */
+        graphics.drawString(
+                font,
+                Component.literal(
+                        workflow.getName()
+                ),
+                x + 10,
+                y + 10,
+                COLOR_TEXT
+        );
+
+        /*
+         * UUID 标题
+         */
+        graphics.drawString(
+                font,
+                Component.literal(
+                        "Workflow UUID"
+                ),
+                x + 10,
+                y + 30,
+                COLOR_TEXT_MUTED
+        );
+
+        /*
+         * UUID
+         */
+        graphics.drawString(
+                font,
+                Component.literal(
+                        workflow.getId().toString()
+                ),
+                x + 10,
+                y + 46,
+                COLOR_TEXT_SECONDARY
+        );
+    }
+
+    private void updateHoveredWorkflow()
+    {
+        if (
+                state.workflowMenuOpen
+                        || state.renameDialogOpen
+                        || state.markerPickerOpen
+                        || state.actionPickerOpen
+        ) {
+
+            state.hoveredWorkflowId = null;
+            return;
+        }
+
+
+        Workflow workflow =
+                findWorkflowAtSidebar(
+                        mouseX,
+                        mouseY
+                );
+
+
+        UUID newId =
+                workflow == null
+                        ? null
+                        : workflow.getId();
+
+
+        if (!Objects.equals(
+                state.hoveredWorkflowId,
+                newId
+        )) {
+
+            state.hoveredWorkflowId =
+                    newId;
+
+            state.hoveredWorkflowStartTime =
+                    System.currentTimeMillis();
+        }
     }
 
     /*
@@ -2385,6 +2596,49 @@ public class WorkflowScreen extends Screen {
         }
 
         return false;
+    }
+
+    private Workflow findWorkflowAtMouse() {
+
+        if (state.sidebarCollapsed) {
+            return null;
+        }
+
+
+        List<Workflow> visible =
+                getFilteredWorkflows();
+
+
+        int y =
+                WorkflowFrameLayout.workflowListTop()
+                        - (int) state.sidebarScroll;
+
+
+        int itemWidth =
+                WorkflowFrameLayout.SIDEBAR_EXPANDED_WIDTH - 16;
+
+
+        for (Workflow workflow : visible) {
+
+
+            if (inside(
+                    mouseX,
+                    mouseY,
+                    8,
+                    y,
+                    itemWidth,
+                    WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT - 4
+            )) {
+
+                return workflow;
+            }
+
+
+            y += WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT;
+        }
+
+
+        return null;
     }
 
     /*
