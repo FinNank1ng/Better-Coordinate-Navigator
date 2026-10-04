@@ -11,6 +11,7 @@ import io.github.FinNank1ng.better_coordinate_navigator.network.OpenBCNMainScree
 import io.github.FinNank1ng.better_coordinate_navigator.network.QuestSyncHelper;
 import io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets;
 
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -21,6 +22,8 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 
 public class ModCommands {
 
@@ -156,6 +159,120 @@ public class ModCommands {
         return QuestManager.get(context.getSource().getLevel());
     }
 
+    /**
+     * 根据用户输入解析任务点
+     */
+    private static QuestMarker resolveMarker(
+            CommandContext<CommandSourceStack> context,
+            String input
+    ) {
+
+        if (input == null || input.trim().isEmpty()) {
+            return null;
+        }
+
+        QuestManager manager = getManager(context);
+
+        String value = input.trim();
+
+        /*
+         * 1. 优先尝试 UUID
+         */
+        try {
+
+            UUID markerId = UUID.fromString(value);
+
+            QuestMarker marker = manager.getMarker(markerId);
+
+            if (marker != null) {
+                return marker;
+            }
+
+        } catch (IllegalArgumentException ignored) {
+            /*
+             * 不是 UUID，继续按名称处理
+             */
+        }
+
+        /*
+         * 2. 按名称查找
+         */
+        List<QuestMarker> matches =
+                manager.findMarkers(value);
+
+        /*
+         * 没找到
+         */
+        if (matches.isEmpty()) {
+
+            context.getSource().sendFailure(
+                    Component.literal(
+                            "§c 未找到任务点 [" + value + "]"
+                    )
+            );
+
+            return null;
+        }
+
+        /*
+         * 名称唯一
+         */
+        if (matches.size() == 1) {
+            return matches.get(0);
+        }
+
+        /*
+         * 名称重复
+         */
+        context.getSource().sendFailure(
+                Component.literal(
+                        "§c 找到 " + matches.size()
+                                + " 个同名任务点：[" + value + "]"
+                )
+        );
+
+        for (QuestMarker marker : matches) {
+
+            Component uuidComponent =
+                    Component.literal(
+                            marker.getId().toString()
+                    ).withStyle(
+                            style -> style
+                                    .withUnderlined(true)
+                                    .withClickEvent(
+                                            new ClickEvent(
+                                                    ClickEvent.Action.COPY_TO_CLIPBOARD,
+                                                    marker.getId().toString()
+                                            )
+                                    )
+                    );
+
+            Component line =
+                    Component.literal(
+                            "§7◆ "
+                                    + marker.name
+                                    + " §8| §7坐标: §b"
+                                    + String.format(
+                                    "%.1f %.1f %.1f",
+                                    marker.x,
+                                    marker.y,
+                                    marker.z
+                            )
+                                    + " §8| §eUUID: §f"
+                    ).append(uuidComponent);
+
+            context.getSource().sendFailure(line);
+        }
+
+        context.getSource().sendFailure(
+                Component.literal(
+                        "§7UUID 可直接替代名称用于任务点操作。"
+                )
+        );
+
+        return null;
+    }
+
     // 列表标点逻辑
     private static int listMarkers(CommandContext<CommandSourceStack> context) {
 
@@ -190,7 +307,7 @@ public class ModCommands {
 
                 tracked = manager.isPlayerTracking(
                         player.getUUID(),
-                        marker.name
+                        marker.getId()
                 );
 
             }
@@ -287,46 +404,68 @@ public class ModCommands {
     private static int renameMarker(
             CommandContext<CommandSourceStack> context
     ) {
-        // 新name 替换 老name
+
         String oldName =
-                StringArgumentType.getString(context, "oldName");
+                StringArgumentType.getString(
+                        context,
+                        "oldName"
+                );
 
         String newName =
-                StringArgumentType.getString(context, "newName");
+                StringArgumentType.getString(
+                        context,
+                        "newName"
+                );
+
+        QuestMarker marker =
+                resolveMarker(
+                        context,
+                        oldName
+                );
+
+        if (marker == null) {
+            return 0;
+        }
 
         QuestManager manager =
                 getManager(context);
 
         boolean success =
-                manager.renameMarker(oldName, newName);
+                manager.renameMarker(
+                        marker.getId(),
+                        newName
+                );
 
-        // 未找到原本有的name (老name)
         if (!success) {
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到任务点 ["+oldName+"]"
+                            "§c 任务点重命名失败: [" + oldName + "]"
                     )
             );
+
             return 0;
         }
 
         // 同步服务端与客户端
         if (context.getSource().getEntity() instanceof ServerPlayer player) {
-            QuestSyncHelper.syncToPlayer(player, manager);
+            QuestSyncHelper.syncToPlayer(
+                    player,
+                    manager
+            );
         }
 
-        // 有原本的name则可替换新name
         context.getSource().sendSuccess(
                 () -> Component.literal(
                         """
                         §a 任务点重命名成功
                         §7 旧名称: §f%s
                         §7 新名称: §a%s
-                        """
-                                .formatted(
-                                        oldName,
-                                        newName
-                                )
+                        §7 UUID: §8%s
+                        """.formatted(
+                                oldName,
+                                newName,
+                                marker.getId()
+                        )
                 ),
                 true
         );
@@ -349,20 +488,29 @@ public class ModCommands {
                         "name"
                 );
 
-        QuestManager manager =
-                getManager(context);
+        QuestMarker marker =
+                resolveMarker(
+                        context,
+                        name
+                );
+
+        if (marker == null) {
+            return 0;
+        }
+
+        QuestManager manager = getManager(context);
 
         boolean success =
                 manager.trackPlayerMarker(
                         player.getUUID(),
-                        name
+                        marker.getId()
                 );
 
-        if(!success){
+        if (!success) {
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到任务点 [" + name + "]"
+                            "§c 无法追踪任务点 [" + marker.name + "]"
                     )
             );
 
@@ -376,7 +524,10 @@ public class ModCommands {
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        "§a 已追踪: [" + name + "]"
+                        "§a 已追踪: [" + marker.name + "]"
+                                + " §8(UUID: "
+                                + marker.getId()
+                                + ")"
                 ),
                 false
         );
@@ -399,17 +550,29 @@ public class ModCommands {
                         "name"
                 );
 
-        QuestManager manager =
-                getManager(context);
+        QuestMarker marker =
+                resolveMarker(
+                        context,
+                        name
+                );
 
-        if(!manager.untrackPlayerMarker(
-                player.getUUID(),
-                name
-        )){
+        if (marker == null) {
+            return 0;
+        }
+
+        QuestManager manager = getManager(context);
+
+        boolean success =
+                manager.untrackPlayerMarker(
+                        player.getUUID(),
+                        marker.getId()
+                );
+
+        if (!success) {
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未追踪任务点 [" + name + "]"
+                            "§c 未追踪任务点 [" + marker.name + "]"
                     )
             );
 
@@ -426,7 +589,11 @@ public class ModCommands {
                         """
                         §6 已取消追踪
                         §7目标: §f%s
-                        """.formatted(name)
+                        §7UUID: §8%s
+                        """.formatted(
+                                marker.name,
+                                marker.getId()
+                        )
                 ),
                 false
         );
@@ -465,56 +632,56 @@ public class ModCommands {
         return 1;
     }
 
-    private static int trackPlayerMarker(CommandContext<CommandSourceStack> context)
-            throws CommandSyntaxException {
+    private static int trackPlayerMarker(
+            CommandContext<CommandSourceStack> context
+    ) throws CommandSyntaxException {
 
-        Collection<ServerPlayer> players = EntityArgument.getPlayers(
-                context,
-                "player"
-        );
+        Collection<ServerPlayer> players =
+                EntityArgument.getPlayers(
+                        context,
+                        "player"
+                );
 
-        String playerNames = players.stream()
-                .map(player -> player.getName().getString())
-                .reduce((a,b)->a+", "+b)
-                .orElse("");
+        String playerNames =
+                players.stream()
+                        .map(player -> player.getName().getString())
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("");
 
-        String name = StringArgumentType.getString(
-                context,
-                "name"
-        );
+        String name =
+                StringArgumentType.getString(
+                        context,
+                        "name"
+                );
 
-        QuestManager manager = getManager(context);
+        QuestMarker marker =
+                resolveMarker(
+                        context,
+                        name
+                );
 
-        QuestMarker marker = manager.getMarker(name);
-
-        if(marker == null){
-
-            context.getSource().sendFailure(
-                    Component.literal(
-                            "§c 未找到任务点 ["+name+"]"
-                    )
-            );
-
+        if (marker == null) {
             return 0;
         }
 
-        for(ServerPlayer player : players){
+        QuestManager manager = getManager(context);
+
+        for (ServerPlayer player : players) {
 
             manager.trackPlayerMarker(
                     player.getUUID(),
-                    name
+                    marker.getId()
             );
 
             QuestSyncHelper.syncToPlayer(
                     player,
                     manager
             );
-
         }
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        "§a 已设置玩家 §d[" + playerNames + "] §a追踪: §b[" + name + "]"
+                        "§a已设置玩家§d["+playerNames+"] §a追踪: §b["+marker.name+"]"
                 ),
                 true
         );
@@ -522,56 +689,61 @@ public class ModCommands {
         return 1;
     }
 
-    private static int untrackPlayerMarker(CommandContext<CommandSourceStack> context
+
+    private static int untrackPlayerMarker(
+            CommandContext<CommandSourceStack> context
     ) throws CommandSyntaxException {
 
-        Collection<ServerPlayer> players = EntityArgument.getPlayers(
-                context,
-                "player"
-        );
+        Collection<ServerPlayer> players =
+                EntityArgument.getPlayers(
+                        context,
+                        "player"
+                );
 
-        String playerNames = players.stream()
-                .map(player -> player.getName().getString())
-                .reduce((a,b)->a+", "+b)
-                .orElse("");
+        String playerNames =
+                players.stream()
+                        .map(player -> player.getName().getString())
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("");
 
-        String name = StringArgumentType.getString(
-                context,
-                "name"
-        );
+        String name =
+                StringArgumentType.getString(
+                        context,
+                        "name"
+                );
 
-        QuestManager manager = getManager(context);
+        QuestMarker marker =
+                resolveMarker(
+                        context,
+                        name
+                );
 
-        QuestMarker marker = manager.getMarker(name);
-
-        if(marker == null){
-
-            context.getSource().sendFailure(
-                    Component.literal(
-                            "§c 未找到任务点[" + name + "]"
-                    )
-            );
-
+        if (marker == null) {
             return 0;
         }
 
-        for(ServerPlayer player : players){
+        QuestManager manager = getManager(context);
+
+        for (ServerPlayer player : players) {
 
             manager.untrackPlayerMarker(
                     player.getUUID(),
-                    name
+                    marker.getId()
             );
 
             QuestSyncHelper.syncToPlayer(
                     player,
                     manager
             );
-
         }
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
-                        "§6 已取消玩家 §d[" + playerNames + "] §6追踪: §b [" + name + "]"
+                        "§6 已取消玩家 §d["
+                                + playerNames
+                                + "] §6追踪: §b["
+                                + marker.name
+                                + "]"
                 ),
                 true
         );
@@ -598,7 +770,9 @@ public class ModCommands {
 
         QuestManager manager = QuestManager.get(player.serverLevel());
 
-        QuestMarker marker = manager.getMarker(name);
+        QuestMarker marker = resolveMarker(
+                context, name
+        );
 
         if(marker == null){
 
@@ -644,8 +818,10 @@ public class ModCommands {
 
         QuestManager manager = QuestManager.get(player.serverLevel());
 
-        QuestMarker marker =
-                manager.getMarker(name);
+        QuestMarker marker = resolveMarker(
+                context,
+                name
+        );
 
         if(marker == null){
 
@@ -689,20 +865,13 @@ public class ModCommands {
                         "name"
                 );
 
-        QuestManager manager =
-                getManager(context);
+        QuestManager manager = getManager(context);
 
-        QuestMarker marker =
-                manager.getMarker(name);
+        QuestMarker marker = resolveMarker(
+                context, name
+        );
 
         if (marker == null) {
-
-            context.getSource().sendFailure(
-                    Component.literal(
-                            "§c 未找到任务点 [" + name + "]"
-                    )
-            );
-
             return 0;
         }
 
@@ -711,32 +880,28 @@ public class ModCommands {
          */
         boolean tracked = false;
 
-        if(context.getSource().getEntity() instanceof ServerPlayer player){
+        if (context.getSource().getEntity()
+                instanceof ServerPlayer player) {
 
             tracked =
                     manager.isPlayerTracking(
                             player.getUUID(),
-                            marker.name
+                            marker.getId()
                     );
-
         }
 
         String text = """
-        §6§l========== Marker Info ==========
-
-        §e名称: §f%s
-    
-        §e坐标: §b%.1f %.1f %.1f
-
-        §e描述: §7%s
-
-        §e图标: %s
-
-        §e状态: %s
-        §8===================================
-        """
+            §6§l Marker Info
+            §e名称: §f%s
+            §eUUID: §8%s
+            §e坐标: §b%.1f %.1f %.1f
+            §e描述: §7%s
+            §e图标: %s
+            §e状态: %s
+            """
                 .formatted(
                         marker.name,
+                        marker.getId(),
                         marker.x,
                         marker.y,
                         marker.z,
@@ -763,20 +928,40 @@ public class ModCommands {
     }
 
     // 移除标点逻辑
-    private static int removeMarker(CommandContext<CommandSourceStack> context) {
+    private static int removeMarker(
+            CommandContext<CommandSourceStack> context
+    ) {
 
-        String name = StringArgumentType.getString(
-                context,
-                "name"
-        );
+        String name =
+                StringArgumentType.getString(
+                        context,
+                        "name"
+                );
 
-        QuestManager manager = getManager(context);
+        QuestManager manager =
+                getManager(context);
 
-        boolean removed = manager.removeMarker(name);
+        QuestMarker marker =
+                resolveMarker(
+                        context,
+                        name
+                );
+
+        if (marker == null) {
+            return 0;
+        }
+
+        boolean removed =
+                manager.removeMarker(
+                        marker.getId()
+                );
 
         if (removed) {
+
             // 同步服务端与客户端
-            if (context.getSource().getEntity() instanceof ServerPlayer player) {
+            if (context.getSource().getEntity()
+                    instanceof ServerPlayer player) {
+
                 QuestSyncHelper.syncToPlayer(
                         player,
                         manager
@@ -786,10 +971,13 @@ public class ModCommands {
             context.getSource().sendSuccess(
                     () -> Component.literal(
                             """
-                            §a 已删除任务点
+                            §a 已删除标点
                             §7 名称: §f%s
-                            """
-                                    .formatted(name)
+                            §7 UUID: §8%s
+                            """.formatted(
+                                    marker.name,
+                                    marker.getId()
+                            )
                     ),
                     true
             );
@@ -798,7 +986,7 @@ public class ModCommands {
 
             context.getSource().sendFailure(
                     Component.literal(
-                            "§c 未找到任务点 ["+name+"]"
+                            "§c 删除标点失败 [" + marker.name + "]"
                     )
             );
         }

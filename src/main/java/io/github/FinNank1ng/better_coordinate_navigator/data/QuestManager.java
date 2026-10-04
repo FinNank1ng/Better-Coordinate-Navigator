@@ -355,12 +355,50 @@ public class QuestManager extends SavedData {
         return matches.get(0);
     }
 
+
     /**
-     * 重命名标点
-     *
-     * <p>
-     * 现在允许重命名成已经存在的名称。
-     * 因为名称不是唯一身份。
+     * 根据 UUID 重命名标点 renameMarker 1
+     * UUID 是标点的真实身份，因此即使存在同名标点，也可以通过 UUID 精确指定目标
+     */
+    public boolean renameMarker(
+            UUID markerId,
+            String newName
+    ) {
+
+        if (markerId == null || newName == null) {
+            return false;
+        }
+
+        String newValue = newName.trim();
+
+        if (newValue.isEmpty()) {
+            return false;
+        }
+
+        QuestMarker marker = getMarker(markerId);
+
+        if (marker == null) {
+            return false;
+        }
+
+        String oldValue = marker.name;
+
+        marker.name = newValue;
+
+        LOGGER.debug(
+                "[BCN] Renamed Marker {} -> {} ({})",
+                oldValue,
+                newValue,
+                marker.getId()
+        );
+
+        setDirty();
+
+        return true;
+    }
+    /**
+     * 根据名称重命名标点 renameMarker 2
+     * 如果存在多个同名标点，则返回 false，命令层应提示用户使用 UUID
      */
     public boolean renameMarker(
             String oldName,
@@ -373,9 +411,7 @@ public class QuestManager extends SavedData {
 
         String oldValue = oldName.trim();
 
-        String newValue = newName.trim();
-
-        if (oldValue.isEmpty() || newValue.isEmpty()) {
+        if (oldValue.isEmpty()) {
             return false;
         }
 
@@ -385,22 +421,10 @@ public class QuestManager extends SavedData {
             return false;
         }
 
-        marker.name = newValue;
-
-        /*
-         * 玩家追踪数据使用 UUID
-         */
-
-        LOGGER.debug(
-                "[BCN] Renamed Marker {} -> {} ({})",
-                oldValue,
-                newValue,
-                marker.getId()
+        return renameMarker(
+                marker.getId(),
+                newName
         );
-
-        setDirty();
-
-        return true;
     }
 
     /**
