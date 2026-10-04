@@ -1168,22 +1168,60 @@ public class WorkflowPopupRenderer {
         );
 
         /*
+         * 搜索框背景
+         */
+        drawPanelCard(
+                graphics,
+                20,
+                54,
+                WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
+                26,
+                COLOR_PANEL_ALT,
+                COLOR_BORDER
+        );
+
+        /*
          * 列表区域
          */
-        int listTop = layout.getListTop();
+        int listTop =
+                layout.getListTop();
 
-        int listBottom = layout.getListBottom();
+        int listBottom =
+                layout.getListBottom();
 
-        int cardHeight = WorkflowMarkerPickerLayout.CARD_HEIGHT;
+        int cardHeight =
+                WorkflowMarkerPickerLayout.CARD_HEIGHT;
 
-        int gap = WorkflowMarkerPickerLayout.CARD_GAP;
+        int gap =
+                WorkflowMarkerPickerLayout.CARD_GAP;
 
-        int contentHeight = markers.size() * (cardHeight + gap);
+        int viewportHeight =
+                listBottom - listTop;
 
-        int viewportHeight = listBottom - listTop;
+        /*
+         * 内容总高度
+         */
+        int contentHeight =
+                markers.isEmpty()
+                        ? 0
+                        : markers.size()
+                        * cardHeight
+                        + (markers.size() - 1)
+                        * gap;
 
-        double maxScroll = Math.max(0, contentHeight - viewportHeight);
+        /*
+         * 最大滚动距离
+         */
+        double maxScroll =
+                Math.max(
+                        0,
+                        contentHeight
+                                - viewportHeight
+                );
 
+        /*
+         * 修正滚动位置
+         */
         double markerScroll =
                 clamp(
                         legacyMode
@@ -1195,7 +1233,8 @@ public class WorkflowPopupRenderer {
 
         if (legacyMode) {
 
-            legacyMarkerScroll = markerScroll;
+            legacyMarkerScroll =
+                    markerScroll;
 
         } else {
 
@@ -1205,88 +1244,209 @@ public class WorkflowPopupRenderer {
         }
 
         /*
-         * 绘制列表
-         */
-        int cardY = listTop - (int) markerScroll;
-
-        for (QuestMarker marker : markers) {
-
-            if (cardY + cardHeight >= listTop
-                    && cardY <= listBottom) {
-
-                boolean hovered =
-                        inside(
-                                designMouseX,
-                                designMouseY,
-                                20,
-                                cardY,
-                                WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
-                                cardHeight
-                        );
-
-                drawPanelCard(
-                        graphics,
-                        20,
-                        cardY,
-                        WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
-                        cardHeight,
-                        hovered
-                                ? COLOR_NODE_HOVER
-                                : COLOR_NODE,
-                        hovered
-                                ? COLOR_ACCENT
-                                : COLOR_BORDER
-                );
-
-                String name = marker.name;
-
-                if (name.length() > 55) {
-
-                    name = name.substring(0, 55) + "...";
-                }
-
-                graphics.drawString(
-                        font,
-                        Component.literal(name),
-                        34,
-                        cardY + 12,
-                        hovered
-                                ? COLOR_ACCENT
-                                : COLOR_TEXT
-                );
-
-                graphics.drawString(
-                        font,
-                        Component.literal(
-                                String.format(
-                                        Locale.ROOT,
-                                        "X %.1f   Y %.1f   Z %.1f",
-                                        marker.x,
-                                        marker.y,
-                                        marker.z
-                                )
-                        ),
-                        34,
-                        cardY + 34,
-                        COLOR_TEXT_SECONDARY
-                );
-            }
-
-            cardY +=
-                    cardHeight + gap;
-        }
-
-        /*
-         * 空列表
+         * 没有搜索结果
          */
         if (markers.isEmpty()) {
 
             graphics.drawString(
                     font,
                     Component.literal("没有找到任务点"),
-                    20,
+                    34,
                     listTop + 24,
-                    COLOR_TEXT
+                    COLOR_TEXT_MUTED
+            );
+
+        } else {
+
+            /*
+             * 列表起始位置
+             */
+            int cardY =
+                    listTop
+                            - (int) markerScroll;
+
+            /*
+             * 绘制列表
+             */
+            for (QuestMarker marker :
+                    markers) {
+
+                if (cardY >= listTop
+                        && cardY + cardHeight
+                        <= listBottom) {
+
+                    boolean hovered =
+                            inside(
+                                    designMouseX,
+                                    designMouseY,
+                                    20,
+                                    cardY,
+                                    WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
+                                    cardHeight
+                            );
+
+                    /*
+                     * 卡片
+                     */
+                    drawPanelCard(
+                            graphics,
+                            20,
+                            cardY,
+                            WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
+                            cardHeight,
+                            hovered
+                                    ? COLOR_NODE_HOVER
+                                    : COLOR_NODE,
+                            hovered
+                                    ? COLOR_ACCENT
+                                    : COLOR_BORDER
+                    );
+
+                    /*
+                     * 名称
+                     */
+                    String name =
+                            marker.name;
+
+                    if (name.length() > 55) {
+
+                        name =
+                                name.substring(
+                                        0,
+                                        55
+                                ) + "...";
+                    }
+
+                    graphics.drawString(
+                            font,
+                            Component.literal(
+                                    name
+                            ),
+                            34,
+                            cardY + 12,
+                            hovered
+                                    ? COLOR_ACCENT
+                                    : COLOR_TEXT
+                    );
+
+                    /*
+                     * 坐标
+                     */
+                    graphics.drawString(
+                            font,
+                            Component.literal(
+                                    String.format(
+                                            Locale.ROOT,
+                                            "X %.1f   Y %.1f   Z %.1f",
+                                            marker.x,
+                                            marker.y,
+                                            marker.z
+                                    )
+                            ),
+                            34,
+                            cardY + 34,
+                            COLOR_TEXT_SECONDARY
+                    );
+                }
+
+                /*
+                 * 下一张卡片
+                 */
+                cardY +=
+                        cardHeight
+                                + gap;
+            }
+        }
+
+        /*
+         * 滚动条
+         */
+        if (maxScroll > 0) {
+
+            int trackX =
+                    WorkflowMarkerPickerLayout.POPUP_WIDTH
+                            - 10;
+
+            int trackTop =
+                    listTop;
+
+            int trackHeight =
+                    viewportHeight;
+
+            /*
+             * 滚动条长度
+             */
+            int thumbHeight =
+                    Math.max(
+                            36,
+                            (int) (
+                                    trackHeight
+                                            * (
+                                            (double) trackHeight
+                                                    / contentHeight
+                                    )
+                            )
+                    );
+
+            thumbHeight =
+                    Math.min(
+                            thumbHeight,
+                            trackHeight
+                    );
+
+            /*
+             * 滚动条位置
+             */
+            int thumbY =
+                    trackTop
+                            + (int) (
+                            (trackHeight - thumbHeight)
+                                    * (
+                                    markerScroll
+                                            / maxScroll
+                            )
+                    );
+
+            /*
+             * 轨道
+             */
+            graphics.fill(
+                    trackX,
+                    trackTop,
+                    trackX + 4,
+                    trackTop + trackHeight,
+                    0xFF202B36
+            );
+
+            /*
+             * 滑块
+             */
+            graphics.fill(
+                    trackX,
+                    thumbY,
+                    trackX + 4,
+                    thumbY + thumbHeight,
+                    COLOR_ACCENT
+            );
+        }
+
+        /*
+         * 结果数量
+         */
+        if (!markers.isEmpty()) {
+
+            String resultText =
+                    markers.size()
+                            + " 个任务点";
+
+            graphics.drawString(
+                    font,
+                    Component.literal(
+                            resultText
+                    ),
+                    20,
+                    WorkflowMarkerPickerLayout.POPUP_HEIGHT - 30,
+                    COLOR_TEXT_MUTED
             );
         }
 

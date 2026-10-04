@@ -954,6 +954,9 @@ public class WorkflowScreenInputHandler {
             return true;
         }
 
+        /*
+         * 使用统一 Layout
+         */
         WorkflowMarkerPickerLayout layout =
                 WorkflowMarkerPickerLayout.calculate(
                         screenWidth,
@@ -993,7 +996,8 @@ public class WorkflowScreenInputHandler {
                 layout.getScale();
 
         /*
-         * 屏幕坐标转换为设计坐标
+         * 屏幕坐标
+         * Popup 设计坐标
          */
         double designMouseX =
                 (mouseX - popupX)
@@ -1004,7 +1008,8 @@ public class WorkflowScreenInputHandler {
                         / scale;
 
         /*
-         * 搜索框交给原生 Widget 处理
+         * 搜索框
+         * 交给原生 EditBox
          */
         if (inside(
                 designMouseX,
@@ -1035,58 +1040,91 @@ public class WorkflowScreenInputHandler {
             return true;
         }
 
+        /*
+         * 获取当前搜索结果
+         */
         List<QuestMarker> markers =
                 markerProvider.get();
 
+        int listTop =
+                layout.getListTop();
+
+        int listBottom =
+                layout.getListBottom();
+
+        int cardHeight =
+                WorkflowMarkerPickerLayout.CARD_HEIGHT;
+
+        int gap =
+                WorkflowMarkerPickerLayout.CARD_GAP;
+
         /*
-         * 列表区域
+         * 当前滚动位置
          */
         int cardY =
-                layout.getListTop()
+                listTop
                         - (int) state.markerScroll;
 
+        /*
+         * 逐项检查
+         */
         for (QuestMarker marker :
                 markers) {
 
-            if (inside(
-                    designMouseX,
-                    designMouseY,
-                    20,
-                    cardY,
-                    WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
-                    WorkflowMarkerPickerLayout.CARD_HEIGHT
-            )) {
+            /*
+             * 只有完整进入列表 Viewport 的卡片才被允许点击
+             */
+            if (cardY >= listTop
+                    && cardY + cardHeight
+                    <= listBottom) {
 
-                if (state.replacingMarkerStepId != null) {
+                if (inside(
+                        designMouseX,
+                        designMouseY,
+                        20,
+                        cardY,
+                        WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
+                        cardHeight
+                )) {
 
-                    WorkflowStep step =
-                            stepFinder.find(
-                                    state.replacingMarkerStepId
+                    /*
+                     * 替换现有节点目标
+                     */
+                    if (state.replacingMarkerStepId
+                            != null) {
+
+                        WorkflowStep step =
+                                stepFinder.find(
+                                        state.replacingMarkerStepId
+                                );
+
+                        if (step != null) {
+
+                            replaceMarkerHandler.handle(
+                                    step,
+                                    marker
                             );
+                        }
 
-                    if (step != null) {
+                    } else {
 
-                        replaceMarkerHandler.handle(
-                                step,
+                        /*
+                         * 新建节点时添加标点
+                         */
+                        addMarkerHandler.handle(
                                 marker
                         );
                     }
 
-                } else {
+                    closeMarkerPickerHandler.run();
 
-                    addMarkerHandler.handle(
-                            marker
-                    );
+                    return true;
                 }
-
-                closeMarkerPickerHandler.run();
-
-                return true;
             }
 
             cardY +=
-                    WorkflowMarkerPickerLayout.CARD_HEIGHT
-                            + WorkflowMarkerPickerLayout.CARD_GAP;
+                    cardHeight
+                            + gap;
         }
 
         return true;
@@ -1321,10 +1359,10 @@ public class WorkflowScreenInputHandler {
             return true;
         }
 
+        /*
+         * Marker Picker
+         */
         if (state.markerPickerOpen) {
-
-            List<QuestMarker> markers =
-                    markerProvider.get();
 
             WorkflowMarkerPickerLayout layout =
                     WorkflowMarkerPickerLayout.calculate(
@@ -1332,32 +1370,98 @@ public class WorkflowScreenInputHandler {
                             screenHeight
                     );
 
-            int viewportHeight =
-                    layout.getListBottom()
-                            - layout.getListTop();
+            double scale =
+                    layout.getScale();
 
+            int popupX =
+                    layout.getPopupX();
+
+            int popupY =
+                    layout.getPopupY();
+
+            /*
+             * 屏幕坐标
+             * Popup 设计坐标
+             */
+            double designMouseX =
+                    (mouseX - popupX)
+                            / scale;
+
+            double designMouseY =
+                    (mouseY - popupY)
+                            / scale;
+
+            int listTop =
+                    layout.getListTop();
+
+            int listBottom =
+                    layout.getListBottom();
+
+            /*
+             * 只有鼠标在列表区域才处理滚轮
+             */
+            if (!inside(
+                    designMouseX,
+                    designMouseY,
+                    20,
+                    listTop,
+                    WorkflowMarkerPickerLayout.POPUP_WIDTH - 40,
+                    listBottom - listTop
+            )) {
+
+                return true;
+            }
+
+            /*
+             * 使用当前搜索结果计算内容高度
+             */
+            List<QuestMarker> markers =
+                    markerProvider.get();
+
+            int cardHeight =
+                    WorkflowMarkerPickerLayout.CARD_HEIGHT;
+
+            int gap =
+                    WorkflowMarkerPickerLayout.CARD_GAP;
+
+            int viewportHeight =
+                    listBottom - listTop;
+
+            /*
+             * 最后一张卡片后不计算 gap
+             */
             int contentHeight =
-                    markers.size()
-                            * (
-                            WorkflowMarkerPickerLayout.CARD_HEIGHT
-                                    + WorkflowMarkerPickerLayout.CARD_GAP
+                    markers.isEmpty()
+                            ? 0
+                            : markers.size()
+                            * cardHeight
+                            + (markers.size() - 1)
+                            * gap;
+
+            double maxScroll =
+                    Math.max(
+                            0,
+                            contentHeight
+                                    - viewportHeight
                     );
 
+            /*
+             * 滚动
+             */
             state.markerScroll =
                     clamp(
                             state.markerScroll
                                     - delta * 58,
                             0,
-                            Math.max(
-                                    0,
-                                    contentHeight
-                                            - viewportHeight
-                            )
+                            maxScroll
                     );
 
             return true;
         }
 
+        /*
+         * Sidebar 滚动
+         */
         if (!state.sidebarCollapsed
                 && inside(
                 mouseX,
@@ -1378,10 +1482,10 @@ public class WorkflowScreenInputHandler {
                             * WorkflowFrameLayout.WORKFLOW_ITEM_HEIGHT;
 
             int viewportHeight =
-                    screenHeight
-                            - WorkflowFrameLayout.HEADER_HEIGHT
-                            - WorkflowFrameLayout.FOOTER_HEIGHT
-                            - 100;
+                    WorkflowFrameLayout.workflowListBottom(
+                            screenHeight
+                    )
+                            - WorkflowFrameLayout.workflowListTop();
 
             state.sidebarScroll =
                     clamp(
@@ -1398,6 +1502,9 @@ public class WorkflowScreenInputHandler {
             return true;
         }
 
+        /*
+         * Canvas 缩放
+         */
         if (inside(
                 mouseX,
                 mouseY,
@@ -1440,7 +1547,8 @@ public class WorkflowScreenInputHandler {
                                 mouseY
                         );
 
-                state.zoom = newZoom;
+                state.zoom =
+                        newZoom;
 
                 int canvasX =
                         getSidebarWidth();
@@ -1448,12 +1556,14 @@ public class WorkflowScreenInputHandler {
                 state.panX =
                         mouseX
                                 - canvasX
-                                - worldX * state.zoom;
+                                - worldX
+                                * state.zoom;
 
                 state.panY =
                         mouseY
                                 - WorkflowFrameLayout.HEADER_HEIGHT
-                                - worldY * state.zoom;
+                                - worldY
+                                * state.zoom;
             }
 
             return true;

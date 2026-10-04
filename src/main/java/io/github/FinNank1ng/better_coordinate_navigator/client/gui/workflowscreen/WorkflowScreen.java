@@ -395,6 +395,13 @@ public class WorkflowScreen extends Screen {
                 COLOR_TEXT
         );
 
+        /*
+         * 搜索内容变化时，自动回到列表顶部
+         */
+        markerSearchBox.setResponder(
+                value -> state.markerScroll = 0
+        );
+
         markerSearchBox.visible = false;
 
         renameBox =
@@ -527,6 +534,40 @@ public class WorkflowScreen extends Screen {
 
             if (!workflowSearchBox.visible) {
                 workflowSearchBox.setFocused(false);
+            }
+        }
+
+        if (markerSearchBox != null) {
+
+            WorkflowMarkerPickerLayout layout =
+                    WorkflowMarkerPickerLayout.calculate(
+                            width,
+                            height
+                    );
+
+            markerSearchBox.setX(
+                    layout.toScreenX(26)
+            );
+
+            markerSearchBox.setY(
+                    layout.toScreenY(62)
+            );
+
+            markerSearchBox.setWidth(
+                    layout.toScreenSize(
+                            WorkflowMarkerPickerLayout.POPUP_WIDTH - 40
+                    )
+            );
+
+            markerSearchBox.setHeight(
+                    layout.toScreenSize(26)
+            );
+
+            markerSearchBox.visible =
+                    state.markerPickerOpen;
+
+            if (!markerSearchBox.visible) {
+                markerSearchBox.setFocused(false);
             }
         }
 
