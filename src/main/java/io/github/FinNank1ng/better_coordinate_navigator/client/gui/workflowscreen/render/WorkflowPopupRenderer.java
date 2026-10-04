@@ -405,6 +405,15 @@ public class WorkflowPopupRenderer {
                         ? "未设置任务点"
                         : marker.name;
 
+        if (markerName.length() > 28) {
+
+            markerName =
+                    markerName.substring(
+                            0,
+                            28
+                    ) + "...";
+        }
+
         String positionText =
                 marker == null
                         ? "坐标未知"
@@ -2164,7 +2173,7 @@ public class WorkflowPopupRenderer {
     }
 
     /*
-     * 左 / 中 / 右信息栏使用的居中文字
+     * 左 / 中 / 右信息栏使用的自适应居中文本
      */
     private void drawCenteredScaledText(
             GuiGraphics graphics,
@@ -2172,12 +2181,55 @@ public class WorkflowPopupRenderer {
             int x,
             int centerY,
             int width,
-            float scale,
+            float maxScale,
             int color
     ) {
 
+        if (text == null
+                || text.isEmpty()
+                || width <= 0) {
+
+            return;
+        }
+
         int textWidth =
                 font.width(text);
+
+        if (textWidth <= 0) {
+            return;
+        }
+
+        /*
+         * 保留左右少量安全间距
+         */
+        float availableWidth =
+                Math.max(
+                        1.0F,
+                        width - 16.0F
+                );
+
+        /*
+         * 根据实际文字宽度动态缩小。
+         *
+         * maxScale:
+         *     正常情况下允许的最大字号。
+         *
+         * 0.65F:
+         *     极端情况下的最小字号，
+         *     防止文字缩得过小。
+         */
+        float scale =
+                Math.min(
+                        maxScale,
+                        availableWidth
+                                / textWidth
+                );
+
+        scale =
+                Math.max(
+                        0.65F,
+                        scale
+                );
 
         float scaledWidth =
                 textWidth * scale;
