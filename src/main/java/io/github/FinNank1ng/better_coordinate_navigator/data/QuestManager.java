@@ -31,6 +31,18 @@ public class QuestManager extends SavedData {
         super();
     }
 
+    public Set<UUID> getPlayerTrackers(UUID uuid){
+
+        if(uuid == null){
+            return Collections.emptySet();
+        }
+
+        return playerTrackers.getOrDefault(
+                uuid,
+                Collections.emptySet()
+        );
+    }
+
     /**
      * 从 NBT 加载数据
      */
@@ -706,4 +718,5 @@ public class QuestManager extends SavedData {
         return trackers != null
                 && trackers.contains(markerId);
     }
+
 }

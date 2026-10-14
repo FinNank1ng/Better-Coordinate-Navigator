@@ -5,12 +5,16 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.FinNank1ng.better_coordinate_navigator.compat.xaero.XaeroMinimapCompat;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 import io.github.FinNank1ng.better_coordinate_navigator.network.OpenBCNMainScreenPacket;
 import io.github.FinNank1ng.better_coordinate_navigator.network.QuestSyncHelper;
 import io.github.FinNank1ng.better_coordinate_navigator.network.ModPackets;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraft.commands.CommandSourceStack;
@@ -21,9 +25,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class ModCommands {
 
@@ -601,26 +603,65 @@ public class ModCommands {
         return 1;
     }
 
-    // 清除自己的全部追踪
     private static int clearTrackedMarkers(
             CommandContext<CommandSourceStack> context
     )
             throws CommandSyntaxException {
 
+
         ServerPlayer player =
                 context.getSource()
                         .getPlayerOrException();
 
-        QuestManager manager = getManager(context);
 
+        QuestManager manager =
+                getManager(context);
+
+
+        List<UUID> trackedMarkers =
+                new ArrayList<>(
+                        manager.getPlayerTrackers(
+                                player.getUUID()
+                        )
+                );
+
+
+        /*
+         * 删除 BCN 追踪
+         */
         manager.clearPlayerTrackers(
                 player.getUUID()
         );
 
+
+        /*
+         * 删除 Xaero waypoint
+         */
+        for(UUID markerId : trackedMarkers){
+
+            QuestMarker marker =
+                    manager.getMarker(markerId);
+
+
+            if(marker == null){
+                continue;
+            }
+
+
+            XaeroMinimapCompat.removeMarker(
+                    marker.name
+            );
+        }
+
+
+        /*
+         * 同步客户端
+         */
         QuestSyncHelper.syncToPlayer(
                 player,
                 manager
         );
+
 
         context.getSource().sendSuccess(
                 () -> Component.literal(
@@ -629,8 +670,10 @@ public class ModCommands {
                 false
         );
 
+
         return 1;
     }
+
 
     private static int trackPlayerMarker(
             CommandContext<CommandSourceStack> context

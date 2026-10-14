@@ -1,5 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator.network;
 
+import io.github.FinNank1ng.better_coordinate_navigator.compat.xaero.XaeroMinimapCompat;
 import io.github.FinNank1ng.better_coordinate_navigator.client.ClientDataSyncManager;
 import io.github.FinNank1ng.better_coordinate_navigator.data.ClientQuestCache;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
@@ -121,15 +122,35 @@ public class QuestDataUpdatePacket {
         ctx.get().enqueueWork(() -> {
 
             /*
-             * 更新标点缓存
+             * 删除 Xaero 中已经取消追踪的 BCN waypoint
+             */
+            List<String> oldTracked =
+                    ClientQuestCache.getTrackedMarkers();
+
+
+            for (String oldName : oldTracked) {
+
+                if (!msg.trackedMarkers.contains(oldName)) {
+
+                    XaeroMinimapCompat.removeMarker(
+                            oldName
+                    );
+
+                    LOGGER.debug(
+                            "[BCN] Removed Xaero waypoint: {}",
+                            oldName
+                    );
+                }
+            }
+
+
+            /*
+             * 更新缓存
              */
             ClientQuestCache.set(
                     msg.markers
             );
 
-            /*
-             * 更新当前玩家追踪状态
-             */
             ClientQuestCache.setTrackedMarkers(
                     msg.trackedMarkers
             );
