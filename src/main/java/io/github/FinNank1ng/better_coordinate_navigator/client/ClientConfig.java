@@ -13,16 +13,18 @@ public class ClientConfig {
 
     public WorldMarker WorldMarker = new WorldMarker();
 
-
+    public Xaero Xaero = new Xaero();
 
     /**
      * 配置合法性检查
      */
     // 没人闲着想把配置版本搞掉吧?就你！屏幕前的，改了让你飞起来！！！焯！
     public void validate(){
+
         if(configVersion <= 0){
             configVersion = 1;
         }
+
 
         if(HUD == null){
 
@@ -38,13 +40,20 @@ public class ClientConfig {
         }
 
 
+        if(Xaero == null){
+
+            Xaero = new Xaero();
+
+        }
+
+
         HUD.validate();
 
         WorldMarker.validate();
 
+        Xaero.validate();
+
     }
-
-
 
 
     /*
@@ -344,4 +353,22 @@ public class ClientConfig {
             }
         }
     }
+
+    /*
+     * Xaero 联动配置
+     */
+    public static class Xaero {
+
+
+        /*
+         * 是否同步 BCN 标点到 Xaero
+         */
+        public boolean enableWaypointSync = true;
+
+
+        public void validate(){
+
+        }
+    }
+
 }

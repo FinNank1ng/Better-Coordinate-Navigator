@@ -1,5 +1,6 @@
 package io.github.FinNank1ng.better_coordinate_navigator.compat.xaero;
 
+import io.github.FinNank1ng.better_coordinate_navigator.client.ConfigLoader;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 import net.minecraft.resources.ResourceLocation;
 import xaero.common.XaeroMinimapSession;
@@ -22,8 +23,8 @@ public final class XaeroMinimapCompat {
                     "marker"
             );
 
-    private static final int DEFAULT_COLOR = 0xFFFFFF;
-    private static final String DEFAULT_SYMBOL = "B";
+    private static final int DEFAULT_COLOR = 6;   // 为啥用的 § 能生效，底层用 § ?
+    private static final String DEFAULT_SYMBOL = "★";
 
     private XaeroMinimapCompat() {
     }
@@ -34,6 +35,12 @@ public final class XaeroMinimapCompat {
     public static void syncMarker(QuestMarker marker) {
 
         if (marker == null) {
+            return;
+        }
+
+        if(ConfigLoader.CONFIG != null
+                && !ConfigLoader.CONFIG.Xaero.enableWaypointSync){
+
             return;
         }
 
@@ -84,11 +91,38 @@ public final class XaeroMinimapCompat {
     }
 
     /**
+     * 动态编号
+     * @param marker
+     * @return
+     */
+    private static String getWaypointSymbol(
+            QuestMarker marker
+    ) {
+
+        if (marker.name == null
+                || marker.name.isEmpty()) {
+
+            return "★";
+        }
+
+
+        return marker.name.substring(
+                0,
+                1
+        );
+    }
+
+
+    /**
      * 创建 BCN → Xaero waypoint
      */
     private static Waypoint createWaypoint(
             QuestMarker marker
     ) {
+
+        String symbol =
+                getWaypointSymbol(marker);
+
 
         Waypoint waypoint =
                 new Waypoint(
@@ -96,7 +130,7 @@ public final class XaeroMinimapCompat {
                         (int) Math.round(marker.y),
                         (int) Math.round(marker.z),
                         marker.name,
-                        DEFAULT_SYMBOL,
+                        symbol,
                         DEFAULT_COLOR
                 );
 
@@ -140,6 +174,10 @@ public final class XaeroMinimapCompat {
 
         waypoint.setName(
                 marker.name
+        );
+
+        waypoint.setSymbol(
+                getWaypointSymbol(marker)
         );
 
         waypoint.setYIncluded(
@@ -198,6 +236,12 @@ public final class XaeroMinimapCompat {
             return;
         }
 
+        if(ConfigLoader.CONFIG != null
+                && !ConfigLoader.CONFIG.Xaero.enableWaypointSync){
+
+            return;
+        }
+
         if (!XaeroCompat.isMinimapLoaded()) {
             return;
         }
@@ -249,6 +293,12 @@ public final class XaeroMinimapCompat {
      * 不会碰玩家自己创建的 waypoint
      */
     public static void clearAll() {
+
+        if(ConfigLoader.CONFIG != null
+                && !ConfigLoader.CONFIG.Xaero.enableWaypointSync){
+
+            return;
+        }
 
         if (!XaeroCompat.isMinimapLoaded()) {
             return;
