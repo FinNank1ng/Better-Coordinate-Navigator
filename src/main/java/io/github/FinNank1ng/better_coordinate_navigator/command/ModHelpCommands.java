@@ -107,6 +107,9 @@ public final class ModHelpCommands {
 
                         + "§a/bcn marker info <name>\n"
                         + "§7查看任务点详细信息"
+
+                        + "§c/bcn marker clear\n"
+                        + "§7删除全部任务点(危险操作)\n\n"
         );
     }
 

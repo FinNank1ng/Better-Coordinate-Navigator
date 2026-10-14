@@ -27,6 +27,19 @@ public class QuestManager extends SavedData {
      */
     private final List<QuestMarker> markers = new ArrayList<>();
 
+    /**
+     *  清除所有存在的标点（高危）
+     */
+    public void clearAllMarkers(){
+
+        markers.clear();
+
+        playerTrackers.clear();
+
+        setDirty();
+    }
+
+
     public QuestManager() {
         super();
     }

@@ -55,6 +55,11 @@ public class ModCommands {
                                                 )
                                         )
                                 )
+                                // clear 清除全部标点（高危）
+                                .then(Commands.literal("clear")
+                                        .requires(source -> source.hasPermission(2))
+                                        .executes(ModCommands::clearMarkers)
+                                )
 
                                 // rename
                                 .then(Commands.literal("rename")
@@ -1036,4 +1041,78 @@ public class ModCommands {
 
         return removed ? 1 : 0;
     }
+
+    /**
+     * 删除全部任务点
+     */
+    private static int clearMarkers(
+            CommandContext<CommandSourceStack> context
+    ) {
+
+        QuestManager manager =
+                getManager(context);
+
+
+        List<QuestMarker> markers =
+                new ArrayList<>(
+                        manager.getMarkers()
+                );
+
+
+        if(markers.isEmpty()){
+
+            context.getSource().sendSuccess(
+                    () -> Component.literal(
+                            "§7 当前没有任务点"
+                    ),
+                    false
+            );
+
+            return 0;
+        }
+
+
+        /*
+         * 删除 Xaero 标点
+         */
+        for(QuestMarker marker : markers){
+
+            XaeroMinimapCompat.removeMarker(
+                    marker.name
+            );
+        }
+
+
+        /*
+         * 删除 BCN 数据
+         */
+        manager.clearAllMarkers();
+
+
+        /*
+         * 同步客户端
+         */
+        if(context.getSource().getEntity()
+                instanceof ServerPlayer player){
+
+            QuestSyncHelper.syncToPlayer(
+                    player,
+                    manager
+            );
+        }
+
+
+        context.getSource().sendSuccess(
+                () -> Component.literal(
+                        "§c 已删除全部任务点\n"
+                                + "§7数量: §f"
+                                + markers.size()
+                ),
+                true
+        );
+
+
+        return 1;
+    }
+
 }
