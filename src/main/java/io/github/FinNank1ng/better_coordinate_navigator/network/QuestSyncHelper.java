@@ -1,3 +1,4 @@
+
 package io.github.FinNank1ng.better_coordinate_navigator.network;
 
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
@@ -10,14 +11,17 @@ import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class QuestSyncHelper {
 
+    /**
+     * 将服务器标点数据同步给指定玩家
+     */
     public static void syncToPlayer(
             ServerPlayer player,
             QuestManager manager
     ) {
 
         LOGGER.debug(
-                "[BCN] Sync To Player : "
-                        + player.getName().getString()
+                "[BCN] Sync To Player : {}",
+                player.getName().getString()
         );
 
         ModPackets.CHANNEL.send(
@@ -27,8 +31,10 @@ public class QuestSyncHelper {
 
                 new QuestDataUpdatePacket(
                         manager.getMarkers(),
-                        manager.getPlayerTrackedMarkerNames(
-                                player.getUUID()
+                        new ArrayList<>(
+                                manager.getPlayerTrackedMarkerIds(
+                                        player.getUUID()
+                                )
                         )
                 )
         );
