@@ -1,3 +1,4 @@
+
 package io.github.FinNank1ng.better_coordinate_navigator.network;
 
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
@@ -6,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 
+import java.util.ArrayList;
 import java.util.function.Supplier;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
@@ -38,12 +40,14 @@ public class QuestDataRequestPacket {
                 return;
             }
 
-            QuestManager manager = QuestManager.get(player.serverLevel());
+            QuestManager manager =
+                    QuestManager.get(player.serverLevel());
 
             LOGGER.debug(
                     "[BCN] Manager Hash = "
                             + System.identityHashCode(manager)
             );
+
             LOGGER.debug(
                     "[BCN] Sending "
                             + manager.getMarkers().size()
@@ -54,8 +58,10 @@ public class QuestDataRequestPacket {
                     PacketDistributor.PLAYER.with(() -> player),
                     new QuestDataUpdatePacket(
                             manager.getMarkers(),
-                            manager.getPlayerTrackedMarkerNames(
-                                    player.getUUID()
+                            new ArrayList<>(
+                                    manager.getPlayerTrackedMarkerIds(
+                                            player.getUUID()
+                                    )
                             )
                     )
             );

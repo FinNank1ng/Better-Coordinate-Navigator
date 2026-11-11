@@ -8,7 +8,6 @@ public final class XaeroWorldMapCheckHandler {
 
     private XaeroWorldMapCheckHandler() {
     }
-
     public static void check() {
 
         if (!ConfigLoader.CONFIG.checkXaero) {

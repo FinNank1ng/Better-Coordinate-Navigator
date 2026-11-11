@@ -3,6 +3,7 @@ package io.github.FinNank1ng.better_coordinate_navigator.data;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 
+import java.io.FileReader;
 import java.util.UUID;
 
 public class QuestMarker {
@@ -65,7 +66,6 @@ public class QuestMarker {
      * 是否显示实体图标
      */
     public boolean showWorldMarker;
-
     /*
      * 任务状态
      */

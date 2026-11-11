@@ -3,6 +3,7 @@ package io.github.FinNank1ng.better_coordinate_navigator.workflow;
 import com.mojang.logging.LogUtils;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestManager;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
+import io.github.FinNank1ng.better_coordinate_navigator.workflow.WorkflowProgressSavedData;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,10 +42,16 @@ public class WorkflowManager {
             new HashMap<>();
 
     /*
+     * 工作流运行进度持久化
+     */
+    private final WorkflowProgressSavedData progressSavedData;
+
+    /*
      * 记录“当前步骤找不到 Marker”已经警告过哪一步
      *
      * 避免一个错误 Marker 导致每个 Server Tick 都刷日志
      */
+
     private final Map<UUID, Map<UUID, Integer>> missingMarkerWarningSteps =
             new HashMap<>();
 
@@ -53,12 +60,23 @@ public class WorkflowManager {
      * 创建工作流运行管理器
      */
     public WorkflowManager(
-            WorkflowSavedData savedData
+            WorkflowSavedData savedData,
+            WorkflowProgressSavedData progressSavedData
     ) {
 
-        loadFromSavedData(
-                savedData
+        Objects.requireNonNull(
+                savedData,
+                "WorkflowSavedData 不能为 null"
         );
+
+        this.progressSavedData =
+                Objects.requireNonNull(
+                        progressSavedData,
+                        "WorkflowProgressSavedData 不能为 null"
+                );
+
+        loadFromSavedData(savedData);
+        loadProgressFromSavedData(progressSavedData);
     }
 
 
@@ -94,6 +112,10 @@ public class WorkflowManager {
         );
 
         workflows.remove(
+                workflowId
+        );
+
+        progressSavedData.removeWorkflow(
                 workflowId
         );
 
@@ -298,6 +320,134 @@ public class WorkflowManager {
     }
 
 
+
+    /*
+     * 从持久化数据加载玩家运行进度
+     */
+    private void loadProgressFromSavedData(
+            WorkflowProgressSavedData savedData
+    ) {
+
+        progress.clear();
+
+        Map<UUID, Map<UUID, WorkflowProgress>> savedProgress =
+                savedData.getAllProgress();
+
+        for (Map.Entry<UUID, Map<UUID, WorkflowProgress>> playerEntry
+                : savedProgress.entrySet()) {
+
+            UUID playerId = playerEntry.getKey();
+
+            Map<UUID, WorkflowProgress> playerProgress =
+                    new HashMap<>();
+
+            for (WorkflowProgress current :
+                    playerEntry.getValue().values()) {
+
+                Workflow workflow =
+                        workflows.get(current.workflowId());
+
+                /*
+                 * 工作流定义不存在时，不恢复该进度
+                 */
+                if (workflow == null) {
+                    savedData.removeProgress(
+                            playerId,
+                            current.workflowId()
+                    );
+                    continue;
+                }
+
+                /*
+                 * 检查步骤索引是否合法
+                 */
+                if (current.stepIndex() > workflow.getStepCount()) {
+
+                    LOGGER.warn(
+                            "[BCN] 玩家 {} 的工作流 {} 存在非法步骤索引 {}，已跳过恢复",
+                            playerId,
+                            current.workflowId(),
+                            current.stepIndex()
+                    );
+
+                    savedData.removeProgress(
+                            playerId,
+                            current.workflowId()
+                    );
+
+                    continue;
+                }
+
+                playerProgress.put(
+                        current.workflowId(),
+                        current
+                );
+            }
+
+            if (!playerProgress.isEmpty()) {
+
+                progress.put(
+                        playerId,
+                        playerProgress
+                );
+            }
+        }
+
+        LOGGER.info(
+                "[BCN] 已加载 {} 名玩家的工作流进度",
+                progress.size()
+        );
+    }
+
+
+    /*
+     * 保存指定玩家的工作流进度
+     */
+    private void saveProgress(
+            UUID playerId,
+            WorkflowProgress current
+    ) {
+
+        if (playerId == null || current == null) {
+            return;
+        }
+
+        progressSavedData.putProgress(
+                playerId,
+                current
+        );
+    }
+
+
+    /*
+     * 删除指定玩家的工作流持久化进度
+     */
+    private void removeSavedProgress(
+            UUID playerId,
+            UUID workflowId
+    ) {
+
+        progressSavedData.removeProgress(
+                playerId,
+                workflowId
+        );
+    }
+
+
+    /*
+     * 服务器停止前补充标记数据为待保存状态
+     */
+    public void flushProgress() {
+
+        progressSavedData.setDirty();
+
+        LOGGER.info(
+                "[BCN] 工作流进度已标记为待保存，共 {} 名玩家",
+                progress.size()
+        );
+    }
+
+
     /*
      * 启动 / 继续一个工作流
      */
@@ -390,6 +540,11 @@ public class WorkflowManager {
          */
         current.start();
 
+        saveProgress(
+                player.getUUID(),
+                current
+        );
+
         clearMissingMarkerWarning(
                 player.getUUID(),
                 workflowId
@@ -445,6 +600,11 @@ public class WorkflowManager {
         }
 
         current.pause();
+
+        saveProgress(
+                player.getUUID(),
+                current
+        );
 
         Workflow workflow =
                 workflows.get(
@@ -502,6 +662,11 @@ public class WorkflowManager {
         }
 
         current.stop();
+
+        saveProgress(
+                player.getUUID(),
+                current
+        );
 
         clearMissingMarkerWarning(
                 player.getUUID(),
@@ -576,6 +741,11 @@ public class WorkflowManager {
 
             return false;
         }
+
+        removeSavedProgress(
+                player.getUUID(),
+                workflowId
+        );
 
         LOGGER.info(
                 "[BCN] 玩家 {} 重置工作流 {}",
@@ -1009,6 +1179,11 @@ public class WorkflowManager {
                 nextStep
         );
 
+        saveProgress(
+                player.getUUID(),
+                latestProgress
+        );
+
         clearMissingMarkerWarning(
                 player.getUUID(),
                 workflow.getId()
@@ -1331,6 +1506,11 @@ public class WorkflowManager {
                 workflow.getId()
         );
 
+        saveProgress(
+                player.getUUID(),
+                current
+        );
+
         player.sendSystemMessage(
                 Component.literal(
                         "§a任务完成：§f"
@@ -1349,7 +1529,7 @@ public class WorkflowManager {
 
     /*
      * 从玩家运行状态中移除指定工作流
-     * 不用于普通“暂停”
+     * 不用于普通暂停
      */
     private void removePlayerWorkflow(
             ServerPlayer player,
@@ -1362,11 +1542,15 @@ public class WorkflowManager {
                 );
 
         if (playerProgress == null) {
-
             return;
         }
 
         playerProgress.remove(
+                workflowId
+        );
+
+        removeSavedProgress(
+                player.getUUID(),
                 workflowId
         );
 

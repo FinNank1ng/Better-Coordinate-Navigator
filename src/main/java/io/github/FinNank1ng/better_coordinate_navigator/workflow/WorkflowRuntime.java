@@ -1,7 +1,8 @@
+
 package io.github.FinNank1ng.better_coordinate_navigator.workflow;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
+
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
@@ -10,21 +11,16 @@ import net.minecraftforge.fml.common.Mod;
 
 import java.util.Objects;
 
-/*
- * BCN 工作流服务器运行时
- */
 @Mod.EventBusSubscriber(
         modid = "better_coordinate_navigator"
 )
-public final class WorkflowRuntime {
+public class WorkflowRuntime {
 
     private static WorkflowManager workflowManager;
 
-    private WorkflowRuntime() {
-    }
 
     /*
-     * 服务器启动
+     * 服务器启动时加载工作流定义和运行进度
      */
     @SubscribeEvent
     public static void onServerStarted(
@@ -34,27 +30,33 @@ public final class WorkflowRuntime {
         MinecraftServer server =
                 event.getServer();
 
-        WorkflowSavedData savedData =
+        WorkflowSavedData workflowData =
                 WorkflowDataManager.get(
+                        server.overworld()
+                );
+
+        WorkflowProgressSavedData progressData =
+                WorkflowProgressSavedData.get(
                         server.overworld()
                 );
 
         workflowManager =
                 new WorkflowManager(
-                        savedData
+                        workflowData,
+                        progressData
                 );
     }
 
+
     /*
-     * 服务器 Tick
+     * 每个服务器 Tick 更新在线玩家的工作流
      */
     @SubscribeEvent
     public static void onServerTick(
             TickEvent.ServerTickEvent event
     ) {
 
-        if (event.phase
-                != TickEvent.Phase.END) {
+        if (event.phase != TickEvent.Phase.END) {
             return;
         }
 
@@ -65,7 +67,7 @@ public final class WorkflowRuntime {
         MinecraftServer server =
                 event.getServer();
 
-        for (ServerPlayer player :
+        for (var player :
                 server.getPlayerList().getPlayers()) {
 
             workflowManager.tick(
@@ -74,18 +76,26 @@ public final class WorkflowRuntime {
         }
     }
 
+
     /*
-     * 服务器停止
+     * 服务器停止时补充标记进度数据
      */
     @SubscribeEvent
     public static void onServerStopping(
             ServerStoppingEvent event
     ) {
-        workflowManager = null;
+
+        if (workflowManager != null) {
+
+            workflowManager.flushProgress();
+
+            workflowManager = null;
+        }
     }
 
+
     /*
-     * 获取当前服务器的工作流管理器
+     * 获取工作流管理器
      */
     public static WorkflowManager getManager() {
 

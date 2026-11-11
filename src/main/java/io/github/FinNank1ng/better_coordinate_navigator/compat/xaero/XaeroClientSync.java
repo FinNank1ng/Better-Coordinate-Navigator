@@ -1,7 +1,10 @@
+
 package io.github.FinNank1ng.better_coordinate_navigator.compat.xaero;
 
 import io.github.FinNank1ng.better_coordinate_navigator.data.ClientQuestCache;
 import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
+
+import java.util.UUID;
 
 public final class XaeroClientSync {
 
@@ -13,8 +16,7 @@ public final class XaeroClientSync {
      */
     public static void syncAll() {
 
-        for (QuestMarker marker :
-                ClientQuestCache.getMarkers()) {
+        for (QuestMarker marker : ClientQuestCache.getMarkers()) {
 
             if (marker == null) {
                 continue;
@@ -24,28 +26,19 @@ public final class XaeroClientSync {
                 continue;
             }
 
-            /*
-             * ClientQuestCache 的实际客户端追踪状态保存在 TRACKED_MARKERS
-             */
-            if (!ClientQuestCache.isTracked(
-                    marker.name
-            )) {
+            if (!ClientQuestCache.isTracked(marker.getId())) {
                 continue;
             }
 
-            /*
-             * 实际创建 / 更新 Xaero waypoint
+            /**
+             * 同步 Xaero Minimap
              */
-            XaeroMinimapCompat.syncMarker(
-                    marker
-            );
+            XaeroMinimapCompat.syncMarker(marker);
 
-            /*
+            /**
              * World Map 当前复用同一套 Xaero WaypointWorld
              */
-            XaeroWorldMapCompat.syncMarker(
-                    marker
-            );
+            XaeroWorldMapCompat.syncMarker(marker);
         }
     }
 
@@ -62,9 +55,7 @@ public final class XaeroClientSync {
     /**
      * 同步一个 Marker
      */
-    public static void syncMarker(
-            QuestMarker marker
-    ) {
+    public static void syncMarker(QuestMarker marker) {
 
         if (marker == null) {
             return;
@@ -74,38 +65,26 @@ public final class XaeroClientSync {
             return;
         }
 
-        if (!ClientQuestCache.isTracked(
-                marker.name
-        )) {
+        if (!ClientQuestCache.isTracked(marker.getId())) {
             return;
         }
 
-        XaeroMinimapCompat.syncMarker(
-                marker
-        );
+        XaeroMinimapCompat.syncMarker(marker);
 
-        XaeroWorldMapCompat.syncMarker(
-                marker
-        );
+        XaeroWorldMapCompat.syncMarker(marker);
     }
 
     /**
      * 从 Xaero 中移除一个 Marker
      */
-    public static void removeMarker(
-            String markerName
-    ) {
+    public static void removeMarker(UUID markerId) {
 
-        if (markerName == null) {
+        if (markerId == null) {
             return;
         }
 
-        XaeroMinimapCompat.removeMarker(
-                markerName
-        );
+        XaeroMinimapCompat.removeMarker(markerId);
 
-        XaeroWorldMapCompat.removeMarker(
-                markerName
-        );
+        XaeroWorldMapCompat.removeMarker(markerId);
     }
 }

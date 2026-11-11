@@ -1,17 +1,20 @@
+
 package io.github.FinNank1ng.better_coordinate_navigator.client;
 
 import io.github.FinNank1ng.better_coordinate_navigator.compat.xaero.XaeroClientSync;
 import io.github.FinNank1ng.better_coordinate_navigator.data.ClientQuestCache;
+import io.github.FinNank1ng.better_coordinate_navigator.data.QuestMarker;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 public final class ClientDataSyncManager {
 
     /**
-     * 上一次已经同步到 Xaero 的 Marker
+     * 上一次已经同步到 Xaero 的 Marker UUID
      */
-    private static final Set<String> LAST_SYNCED_MARKERS =
+    private static final Set<UUID> LAST_SYNCED_MARKERS =
             new HashSet<>();
 
     private ClientDataSyncManager() {
@@ -22,58 +25,52 @@ public final class ClientDataSyncManager {
      */
     public static void refreshAll() {
 
-        Set<String> currentMarkers =
-                new HashSet<>();
+        Set<UUID> currentMarkers = new HashSet<>();
 
+        /*
+         * 获取当前正在追踪的 Marker
+         */
+        for (QuestMarker marker : ClientQuestCache.getMarkers()) {
 
-        // 获取当前正在追踪的 Marker
-        ClientQuestCache.getMarkers()
-                .forEach(marker -> {
+            if (marker == null) {
+                continue;
+            }
 
-                    if (marker == null) {
-                        return;
-                    }
+            if (!marker.active) {
+                continue;
+            }
 
-                    if (!marker.active) {
-                        return;
-                    }
+            UUID markerId = marker.getId();
 
-                    if (!ClientQuestCache.isTracked(
-                            marker.name
-                    )) {
-                        return;
-                    }
+            if (!ClientQuestCache.isTracked(markerId)) {
+                continue;
+            }
 
-                    currentMarkers.add(
-                            marker.name
-                    );
-                });
+            currentMarkers.add(markerId);
+        }
 
+        /*
+         * 删除已经不存在或取消追踪的 Marker
+         */
+        for (UUID oldMarkerId : LAST_SYNCED_MARKERS) {
 
-        // 删除已经不存在 / 取消追踪的
-        for (String oldMarker :
-                LAST_SYNCED_MARKERS) {
+            if (!currentMarkers.contains(oldMarkerId)) {
 
-            if (!currentMarkers.contains(
-                    oldMarker
-            )) {
-
-                XaeroClientSync.removeMarker(
-                        oldMarker
-                );
+                XaeroClientSync.removeMarker(oldMarkerId);
             }
         }
 
-
-        // 同步当前正在追踪的
+        /*
+         * 同步当前正在追踪的 Marker
+         */
         XaeroClientSync.syncAll();
 
-        // 保存本次状态
+        /*
+         * 保存本次同步状态
+         */
         LAST_SYNCED_MARKERS.clear();
 
-        LAST_SYNCED_MARKERS.addAll(
-                currentMarkers
-        );
+        LAST_SYNCED_MARKERS.addAll(currentMarkers);
     }
 
     /**

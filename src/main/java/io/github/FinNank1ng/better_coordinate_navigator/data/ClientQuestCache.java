@@ -1,55 +1,52 @@
+
 package io.github.FinNank1ng.better_coordinate_navigator.data;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientQuestCache {
 
     /**
-     * 世界中的全部标点 QuestMarker 自身包含唯一 UUID。
+     * 世界中的全部标点
      */
     private static final List<QuestMarker> MARKERS =
             new CopyOnWriteArrayList<>();
 
     /**
-     * 当前客户端玩家追踪的标点名称
+     * 当前客户端玩家追踪的标点 UUID
      */
-    private static final List<String> TRACKED_MARKERS =
-            new CopyOnWriteArrayList<>();
+    private static final Set<UUID> TRACKED_MARKER_IDS =
+            new HashSet<>();
+
+    private ClientQuestCache() {
+    }
 
     /**
      * 设置客户端标点缓存
      */
-    public static void set(
-            List<QuestMarker> markers
-    ) {
+    public static void set(List<QuestMarker> markers) {
 
-        // 先清空旧数据
         MARKERS.clear();
-        // 添加新数据
+
         if (markers != null) {
-
             MARKERS.addAll(markers);
-
         }
-
     }
 
     /**
      * 获取全部客户端标点
      */
     public static List<QuestMarker> getMarkers() {
-
         return MARKERS;
     }
 
     /**
      * 根据 UUID 获取客户端标点
-     *
-     * @param id 标点 UUID
-     * @return 对应标点，不存在时返回 null
      */
     public static QuestMarker getMarker(UUID id) {
 
@@ -59,8 +56,7 @@ public class ClientQuestCache {
 
         for (QuestMarker marker : MARKERS) {
 
-            if (marker.getId().equals(id)) {
-
+            if (marker != null && marker.getId().equals(id)) {
                 return marker;
             }
         }
@@ -69,11 +65,11 @@ public class ClientQuestCache {
     }
 
     /**
-     * 根据名称获取客户端标点
+     * 根据名称获取唯一的客户端标点
      */
     public static QuestMarker getMarker(String name) {
 
-        if (name == null) {
+        if (name == null || name.trim().isEmpty()) {
             return null;
         }
 
@@ -81,49 +77,44 @@ public class ClientQuestCache {
 
         for (QuestMarker marker : MARKERS) {
 
-            if (!marker.name.equalsIgnoreCase(name)) {
+            if (marker == null || marker.name == null) {
                 continue;
             }
 
-            if (result == null) {
-
-                result = marker;
-
+            if (!marker.name.equalsIgnoreCase(name.trim())) {
                 continue;
             }
 
-            return null;
+            if (result != null) {
+                return null;
+            }
+
+            result = marker;
         }
 
         return result;
     }
 
-
     /**
      * 查找全部同名客户端标点
      */
-    public static List<QuestMarker> findMarkers(
-            String name
-    ) {
+    public static List<QuestMarker> findMarkers(String name) {
 
-        if (name == null) {
+        if (name == null || name.trim().isEmpty()) {
             return List.of();
         }
 
-        String target =
-                name.trim();
+        String target = name.trim();
 
-        if (target.isEmpty()) {
-            return List.of();
-        }
-
-        List<QuestMarker> result =
-                new java.util.ArrayList<>();
+        List<QuestMarker> result = new ArrayList<>();
 
         for (QuestMarker marker : MARKERS) {
 
-            if (marker.name.equalsIgnoreCase(target)) {
+            if (marker == null || marker.name == null) {
+                continue;
+            }
 
+            if (marker.name.equalsIgnoreCase(target)) {
                 result.add(marker);
             }
         }
@@ -132,66 +123,101 @@ public class ClientQuestCache {
     }
 
     /**
-     * 设置当前玩家追踪列表
+     * 设置当前玩家追踪的标点 UUID
      */
-    public static void setTrackedMarkers(
-            Collection<String> markers
-    ) {
+    public static void setTrackedMarkerIds(Collection<UUID> markerIds) {
 
-        TRACKED_MARKERS.clear();
+        TRACKED_MARKER_IDS.clear();
 
-        if (markers != null) {
-
-            TRACKED_MARKERS.addAll(markers);
-        }
-    }
-
-    /**
-     * 判断当前玩家是否追踪指定名称的标点
-     */
-    public static boolean isTracked(
-            String name
-    ) {
-
-        if (name == null) {
-            return false;
+        if (markerIds == null) {
+            return;
         }
 
-        return TRACKED_MARKERS
-                .stream()
-                .anyMatch(
-                        marker ->
-                                marker.equalsIgnoreCase(name)
-                );
+        for (UUID markerId : markerIds) {
+
+            if (markerId != null) {
+                TRACKED_MARKER_IDS.add(markerId);
+            }
+        }
     }
 
     /**
      * 判断当前玩家是否追踪指定 UUID 的标点
      */
-    public static boolean isTracked(
-            UUID markerId
-    ) {
+    public static boolean isTracked(UUID markerId) {
 
         if (markerId == null) {
             return false;
         }
 
-        QuestMarker marker =
-                getMarker(markerId);
+        return TRACKED_MARKER_IDS.contains(markerId);
+    }
+
+    /**
+     * 获取当前玩家追踪的全部标点 UUID
+     */
+    public static Set<UUID> getTrackedMarkerIds() {
+        return new HashSet<>(TRACKED_MARKER_IDS);
+    }
+
+    /**
+     * 获取当前玩家追踪列表中的标点名称
+     * 仅用于兼容旧代码
+     */
+    @Deprecated
+    public static List<String> getTrackedMarkers() {
+
+        List<String> result = new ArrayList<>();
+
+        for (UUID markerId : TRACKED_MARKER_IDS) {
+
+            QuestMarker marker = getMarker(markerId);
+
+            if (marker != null) {
+                result.add(marker.name);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 通过旧版名称接口设置追踪列表
+     * 仅接受能够唯一匹配的标点
+     */
+    @Deprecated
+    public static void setTrackedMarkers(Collection<String> markers) {
+
+        TRACKED_MARKER_IDS.clear();
+
+        if (markers == null) {
+            return;
+        }
+
+        for (String name : markers) {
+
+            QuestMarker marker = getMarker(name);
+
+            if (marker != null) {
+                TRACKED_MARKER_IDS.add(marker.getId());
+            }
+        }
+    }
+
+    /**
+     * 通过名称判断是否追踪标点
+     * 仅用于兼容旧代码
+     */
+    @Deprecated
+    public static boolean isTracked(String name) {
+
+        QuestMarker marker = getMarker(name);
 
         if (marker == null) {
             return false;
         }
 
-        return isTracked(marker.name);
-    }
-
-    /**
-     * 获取当前玩家追踪列表
-     */
-    public static List<String> getTrackedMarkers() {
-
-        return TRACKED_MARKERS;
+        return isTracked(marker.getId());
     }
 
     /**
@@ -199,18 +225,14 @@ public class ClientQuestCache {
      */
     public static List<QuestMarker> getTrackedMarkerObjects() {
 
-        List<QuestMarker> result =
-                new java.util.ArrayList<>();
+        List<QuestMarker> result = new ArrayList<>();
 
-        for (String name : TRACKED_MARKERS) {
+        for (UUID markerId : TRACKED_MARKER_IDS) {
 
-            List<QuestMarker> matches =
-                    findMarkers(name);
+            QuestMarker marker = getMarker(markerId);
 
-
-            if (matches.size() == 1) {
-
-                result.add(matches.get(0));
+            if (marker != null) {
+                result.add(marker);
             }
         }
 
@@ -224,6 +246,6 @@ public class ClientQuestCache {
 
         MARKERS.clear();
 
-        TRACKED_MARKERS.clear();
+        TRACKED_MARKER_IDS.clear();
     }
 }
